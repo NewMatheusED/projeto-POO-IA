@@ -21,10 +21,12 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - poo-network
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent --show-error http://localhost:5000/v1/health/ > /dev/null"]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/v1/health/')\""]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -61,6 +63,8 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - poo-network
     environment:
@@ -92,10 +96,18 @@ services:
 
   # Redis
   redis:
+    profiles: ["core"]
     image: redis:alpine
     restart: unless-stopped
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - poo-network
 
   # MySQL
   mysql:

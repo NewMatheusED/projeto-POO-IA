@@ -433,19 +433,19 @@ jobs:
             echo "🔄 Iniciando deploy incremental..."
             
             # Pull das novas imagens
-            docker-compose -f docker-compose.prod.yml --env-file .env pull | cat
+            docker-compose -f docker-compose.prod.yml --profile core --env-file .env pull | cat
             
             # Verifica se é primeiro deploy ou atualização
-            RUNNING_SERVICES=$(docker ps --filter "name=backend-prod/ia" --format "{{.Names}}" | grep -E "(api|worker_|beat)" | wc -l)
+            RUNNING_SERVICES=$(docker ps --filter "name=ia" --format "{{.Names}}" | grep -E "(api|worker_ia|beat)" | wc -l)
             echo "📊 Serviços da aplicação rodando: $RUNNING_SERVICES"
             
             if [ "$RUNNING_SERVICES" -eq 0 ]; then
               echo "🆕 Primeiro deploy - iniciando todos os serviços..."
-              docker-compose -f docker-compose.prod.yml --env-file .env up -d | cat
+              docker-compose -f docker-compose.prod.yml --profile core --env-file .env up -d | cat
             else
               echo "🔄 Deploy incremental - atualizando apenas serviços da aplicação..."
-              # Atualiza apenas os serviços da aplicação (API, Workers individuais, Beat, Socket)
-              docker-compose -f docker-compose.prod.yml --env-file .env up -d --no-deps \
+              # Atualiza apenas os serviços da aplicação (API, Workers individuais, Beat)
+              docker-compose -f docker-compose.prod.yml --profile core --env-file .env up -d --no-deps \
                 api \
                 worker_ia \
                 beat \
@@ -458,21 +458,21 @@ jobs:
             
             # Verifica saúde dos serviços
             echo "🔍 Verificando saúde dos serviços:"
-            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep backend-prod/ia
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep ia
             
             # Verifica se algum container falhou
-            FAILED_CONTAINERS=$(docker ps --filter "name=backend-prod/ia" --filter "status=exited" --format "{{.Names}}")
+            FAILED_CONTAINERS=$(docker ps --filter "name=ia" --filter "status=exited" --format "{{.Names}}")
             if [ -n "$FAILED_CONTAINERS" ]; then
               echo "⚠️  Containers falharam: $FAILED_CONTAINERS"
               echo "🔄 Tentando reiniciar containers falhados..."
-              docker-compose -f docker-compose.prod.yml --env-file .env restart | cat
+              docker-compose -f docker-compose.prod.yml --profile core --env-file .env restart | cat
               sleep 10
             fi
             
             # Verificação final
             echo "✅ Verificação final do deploy:"
             echo "📊 Status dos serviços da aplicação:"
-            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}" | grep -E "(backend-prod/ia|api|worker_|beat)"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}" | grep ia
             
             # Limpeza de imagens antigas (apenas as não utilizadas)
             docker image prune -f | cat
