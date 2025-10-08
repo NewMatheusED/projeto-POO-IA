@@ -21,8 +21,6 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      redis-master:
-        condition: service_healthy
     networks:
       - poo-network
     healthcheck:
@@ -63,8 +61,6 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      redis-master:
-        condition: service_healthy
     networks:
       - poo-network
     environment:
@@ -94,7 +90,7 @@ services:
     networks:
       - poo-network
 
-  # Redis Master
+  # Redis
   redis:
     image: redis:alpine
     restart: unless-stopped
@@ -130,9 +126,4 @@ networks:
 
 volumes:
   rabbitmq_data:
-  redis_master_data:
   mysql_data:
-  prom_data:
-  alertmanager_data:
-  grafana_data:
-  worker_logs:
