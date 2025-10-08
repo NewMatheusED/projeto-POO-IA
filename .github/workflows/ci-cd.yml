@@ -433,7 +433,7 @@ jobs:
             echo "🔄 Iniciando deploy incremental..."
             
             # Pull das novas imagens
-            docker compose -f docker-compose.prod.yml --env-file .env --profile core pull | cat
+            docker-compose -f docker-compose.prod.yml --env-file .env pull | cat
             
             # Verifica se é primeiro deploy ou atualização
             RUNNING_SERVICES=$(docker ps --filter "name=backend-prod/ia" --format "{{.Names}}" | grep -E "(api|worker_|beat)" | wc -l)
@@ -441,11 +441,11 @@ jobs:
             
             if [ "$RUNNING_SERVICES" -eq 0 ]; then
               echo "🆕 Primeiro deploy - iniciando todos os serviços..."
-              docker compose -f docker-compose.prod.yml --env-file .env --profile core up -d | cat
+              docker-compose -f docker-compose.prod.yml --env-file .env up -d | cat
             else
               echo "🔄 Deploy incremental - atualizando apenas serviços da aplicação..."
               # Atualiza apenas os serviços da aplicação (API, Workers individuais, Beat, Socket)
-              docker compose -f docker-compose.prod.yml --env-file .env --profile core up -d --no-deps \
+              docker-compose -f docker-compose.prod.yml --env-file .env up -d --no-deps \
                 api \
                 worker_ia \
                 beat \
@@ -465,7 +465,7 @@ jobs:
             if [ -n "$FAILED_CONTAINERS" ]; then
               echo "⚠️  Containers falharam: $FAILED_CONTAINERS"
               echo "🔄 Tentando reiniciar containers falhados..."
-              docker compose -f docker-compose.prod.yml --env-file .env --profile core restart | cat
+              docker-compose -f docker-compose.prod.yml --env-file .env restart | cat
               sleep 10
             fi
             
