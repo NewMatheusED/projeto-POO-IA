@@ -1,0 +1,39 @@
+{
+    "python.analysis.extraPaths": [
+        "./app/broker",
+        "./app"
+    ],
+    "sqltools.connections": [
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 3306,
+            "driver": "MySQL",
+            "name": "Local instance MySQL80",
+            "database": "pegdb",
+            "username": "root"
+        },
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "previewLimit": 50,
+            "server": "192.168.1.14",
+            "port": 3306,
+            "driver": "MySQL",
+            "name": "remote 2",
+            "database": "pegdb",
+            "username": "myuser"
+        }
+    ],
+    "postman.settings.dotenv-detection-notification-visibility": false,
+    "cursorpyright.analysis.extraPaths": [
+        "./app/broker",
+        "./app"
+    ]
+}

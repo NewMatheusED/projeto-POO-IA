@@ -1,0 +1,485 @@
+name: CI/CD Pipeline
+
+on:
+  pull_request:
+    types: [ opened, synchronize, reopened, closed ]
+    branches: [ dev, main ]
+  push:
+    branches: [ dev, main ]
+    tags: [ 'v*.*.*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/senate_tracker_backend
+
+jobs:
+  build-image:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    outputs:
+      tags: ${{ steps.tags.outputs.tags }}
+      target: ${{ steps.tags.outputs.target }}
+      description: ${{ steps.tags.outputs.description }}
+      cache-tag: ${{ steps.tags.outputs.cache-tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:buildx-stable-1
+
+      - name: Determine image tags
+        id: tags
+        run: |
+          REPO="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          DESC="Build for ${GITHUB_REF_TYPE}:${GITHUB_REF_NAME}"
+          TARGET="development"
+          CACHE_TAG="cache-dev"
+
+          # Base: sempre gerar tag por SHA
+          TAGS=("${REPO}:sha-${GITHUB_SHA::7}")
+
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            if [[ "${GITHUB_BASE_REF}" == "dev" ]]; then
+              # PR para dev: build com tag dev
+              TAGS+=("${REPO}:dev")
+              TARGET="development"
+              DESC="Development build for PR #${{ github.event.number }} → dev"
+              CACHE_TAG="cache-dev"
+            elif [[ "${GITHUB_BASE_REF}" == "main" ]]; then
+              # PR para main: build com tag latest
+              TAGS+=("${REPO}:latest")
+              TARGET="production"
+              DESC="Production build for PR #${{ github.event.number }} → main"
+              CACHE_TAG="cache-main"
+            else
+              # PR para outras branches: apenas SHA
+              TARGET="development"
+              DESC="Preview build for PR #${{ github.event.number }}"
+              CACHE_TAG="cache-pr"
+            fi
+          elif [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" == "dev" ]]; then
+            # Push para dev: build com tag dev
+            TAGS+=("${REPO}:dev")
+            TARGET="development"
+            DESC="Development build for dev branch"
+            CACHE_TAG="cache-dev"
+          elif [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" == "main" ]]; then
+            # Push para main: build com tag latest
+            TAGS+=("${REPO}:latest")
+            TARGET="production"
+            DESC="Production build for main branch"
+            CACHE_TAG="cache-main"
+          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            # Push de tag: build com tag da versão e prod
+            TAGS+=("${REPO}:${GITHUB_REF_NAME}" "${REPO}:prod")
+            TARGET="production"
+            DESC="Release build ${GITHUB_REF_NAME}"
+            CACHE_TAG="cache-release"
+          fi
+
+          echo "tags=$(IFS=, ; echo "${TAGS[*]}")" >> $GITHUB_OUTPUT
+          echo "target=${TARGET}" >> $GITHUB_OUTPUT
+          echo "description=${DESC}" >> $GITHUB_OUTPUT
+          echo "cache-tag=${CACHE_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Check cache availability
+        id: cache-check
+        run: |
+          echo "Verificando disponibilidade do cache..."
+          # Tenta baixar uma pequena imagem para testar conectividade
+          docker pull hello-world:latest || echo "Cache registry pode estar indisponível"
+          echo "cache-available=true" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image (with fallback)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          platforms: linux/amd64
+          labels: |
+            org.opencontainers.image.description=${{ steps.tags.outputs.description }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: |
+            type=gha
+          cache-to: |
+            type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+        timeout-minutes: 30
+
+      - name: Output image info
+        run: |
+          echo "Image pushed with tags: ${{ steps.tags.outputs.tags }}"
+          echo "Target: ${{ steps.tags.outputs.target }}"
+          echo "Description: ${{ steps.tags.outputs.description }}"
+
+  run-tests:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      TESTING: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest-cov
+          pip install fakeredis
+
+      - name: Run Tests
+        run: |
+          python -m pytest tests -q --maxfail=1 --disable-warnings \
+            --cov=. --cov-report=term-missing:skip-covered --cov-report=xml
+
+      - name: Extract coverage percent
+        id: cov
+        if: always()
+        run: |
+          python - << 'PY'
+          import os
+          import xml.etree.ElementTree as ET
+          try:
+              tree = ET.parse('coverage.xml')
+              root = tree.getroot()
+              line_rate = float(root.attrib.get('line-rate', '0'))
+              pct = round(line_rate * 100, 2)
+          except Exception:
+              pct = 0.0
+          print(f"coverage={pct}")
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as fh:
+              fh.write(f"coverage={pct}\n")
+          PY
+
+      - name: Comment PR with test result and coverage
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = `${{ job.status }}`;
+            const coverage = `${{ steps.cov.outputs.coverage }}`;
+            const ok = status === 'success';
+            const title = ok ? '✅ Testes passaram' : '❌ Testes falharam';
+            const body = `### ${title}\n\n- **Status**: ${status}\n- **Cobertura**: ${coverage || 'N/A'}%`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+
+  generate-dev-compose:
+    name: Generate Dev Compose
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate docker-compose.dev.yml
+        run: |
+          REPO="docker.io/${{ secrets.DOCKER_USERNAME }}/senate_tracker_backend"
+          TAG="dev"
+          
+          cat > docker-compose.dev.yml << 'COMPOSE'
+          services:
+            api:
+              image: REPO:TAG
+              restart: unless-stopped
+              command: ["python3","run.py"]
+              env_file:
+                - ../.env
+              volumes:
+                - ..:/app
+              ports:
+                - "5000:5000"
+              depends_on:
+                - rabbitmq
+                - redis
+              healthcheck:
+                test: ["CMD-SHELL", "curl --fail --silent --show-error http://localhost:5000/v1/health/ > /dev/null"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
+                start_period: 20s
+
+            worker_ia:
+              image: REPO:TAG
+              restart: unless-stopped
+              command: ["python","worker.py","worker","--loglevel=info","-Q","ia_queue","--concurrency=1","--max-tasks-per-child=20"]
+              env_file:
+                - ../.env
+              depends_on:
+                - rabbitmq
+                - redis
+              environment:
+                - TZ=America/Sao_Paulo
+              volumes:
+                - ..:/app
+                - /etc/localtime:/etc/localtime:ro
+
+            beat:
+              image: REPO:TAG
+              restart: unless-stopped
+              command: ["celery","-A","app.tasks.celery_config:celery_app","beat","-l","INFO","-S","celery.beat.PersistentScheduler"]
+              env_file:
+                - ../.env
+              depends_on:
+                - rabbitmq
+                - redis
+              environment:
+                - TZ=America/Sao_Paulo
+              volumes:
+                - ..:/app
+                - /etc/localtime:/etc/localtime:ro
+
+            rabbitmq:
+              image: rabbitmq:4.1.3-management
+              restart: unless-stopped
+              ports:
+                - "15672:15672"
+                - "5672:5672"
+                - "15692:15692"
+              environment:
+                RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+                RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+
+            redis:
+              image: redis:alpine
+              restart: unless-stopped
+              ports:
+                - "6379:6379"
+            
+            redis-insight:
+              image: redis/redisinsight:latest
+              restart: always
+              ports:
+                - "5540:5540"
+              volumes:
+                - redis-insight:/data
+          
+          volumes:
+            redis-insight:
+          COMPOSE
+          
+          # Substitui REPO:TAG pela imagem real
+          sed -i "s#REPO:TAG#${REPO}:${TAG}#" docker-compose.dev.yml
+
+      - name: Upload docker-compose.dev.yml artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-compose.dev
+          path: docker-compose.dev.yml
+          if-no-files-found: error
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-image]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify docker-compose.prod.yml exists
+        run: |
+          echo "🔍 Verificando se docker-compose.prod.yml existe..."
+          ls -la docker/docker-compose.prod.yml
+          echo "📄 Conteúdo do arquivo (primeiras 10 linhas):"
+          head -10 docker/docker-compose.prod.yml
+
+      - name: Upload docker-compose to production
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST_PROD }}
+          username: ${{ secrets.VPS_USER_PROD }}
+          key: ${{ secrets.VPS_SSH_KEY_PROD }}
+          passphrase: ${{ secrets.VPS_SSH_KEY_PROD_PASSPHRASE }}
+          strip_components: 1
+          source: "docker/docker-compose.prod.yml"
+          target: "/opt/backend-prod/ia/"
+          overwrite: true
+
+      - name: Verify docker-compose upload
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST_PROD }}
+          username: ${{ secrets.VPS_USER_PROD }}
+          key: ${{ secrets.VPS_SSH_KEY_PROD }}
+          passphrase: ${{ secrets.VPS_SSH_KEY_PROD_PASSPHRASE }}
+          script: |
+            echo "🔍 Verificando se docker-compose.prod.yml foi atualizado..."
+            ls -la /opt/backend-prod/ia/docker-compose.prod.yml
+            echo "📅 Timestamp do arquivo:"
+            stat -c %y /opt/backend-prod/ia/docker-compose.prod.yml
+
+      - name: Compute image tag for production
+        id: tag
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            echo "tag=sha-${{ github.sha }}" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" == "main" ]]; then
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            echo "tag=prod" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy to production over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST_PROD }}
+          username: ${{ secrets.VPS_USER_PROD }}
+          key: ${{ secrets.VPS_SSH_KEY_PROD }}
+          passphrase: ${{ secrets.VPS_SSH_KEY_PROD_PASSPHRASE }}
+          script: |
+            set -e
+            mkdir -p /opt/backend-prod/ia
+            cd /opt/backend-prod/ia
+            
+            # Renderiza .env a partir dos Secrets do Environment
+            echo "🔧 Criando arquivo .env..."
+            echo "📁 Diretório atual: $(pwd)"
+            echo "📋 Conteúdo do diretório antes:"
+            ls -la
+            
+            cat > .env << EOF
+            REGISTRY=docker.io
+            IMAGE_NAME=${{ secrets.DOCKER_USERNAME }}/senate_tracker_backend
+            TAG=${{ steps.tag.outputs.tag }}
+            API_PORT=5000
+            MYSQL_PORT=3306
+            REDIS_PORT=6379
+            RABBITMQ_PORT=5672
+            RABBITMQ_MGMT_PORT=15672
+            MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+            FLASK_SECRET_KEY=${{ secrets.FLASK_SECRET_KEY }}
+            SQL_USERNAME=${{ secrets.SQL_USERNAME }}
+            SQL_PASSWORD=${{ secrets.SQL_PASSWORD }}
+            SQL_HOSTNAME=${{ secrets.SQL_HOSTNAME }}
+            SQL_DATABASE=${{ secrets.SQL_DATABASE }}
+            DEBUG_MODE=${{ secrets.DEBUG_MODE }}
+            PRODUCTION=true
+            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+            REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+            REDIS_URL=${{ secrets.REDIS_URL }}
+            RABBITMQ_HOST=${{ secrets.RABBITMQ_HOST }}
+            RABBITMQ_USER=${{ secrets.RABBITMQ_USER }}
+            RABBITMQ_PASS=${{ secrets.RABBITMQ_PASS }}
+            RABBITMQ_VHOST=${{ secrets.RABBITMQ_VHOST }}
+            EOF
+            
+            echo "✅ Arquivo .env criado!"
+            echo "📄 Verificando arquivo .env criado:"
+            echo "📊 Tamanho do arquivo: $(wc -c < .env) bytes"
+            echo "📊 Linhas no arquivo: $(wc -l < .env)"
+            echo "🔍 Primeiras 5 linhas:"
+            head -5 .env
+            echo "📋 Conteúdo do diretório após criação:"
+            ls -la
+
+            # Login no Docker Hub
+            docker login docker.io -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+            
+            # O arquivo .env já foi criado acima com a tag correta
+            echo "✅ Arquivo .env criado com tag: ${{ steps.tag.outputs.tag }}"
+            
+            # Verifica se o arquivo .env existe e tem conteúdo
+            if [ ! -f .env ] || [ ! -s .env ]; then
+              echo "❌ ERRO: Arquivo .env não existe ou está vazio!"
+              echo "📋 Conteúdo atual do diretório:"
+              ls -la
+              exit 1
+            fi
+            
+            echo "📄 Verificando arquivo .env:"
+            echo "📊 Linhas no arquivo: $(wc -l < .env)"
+            echo "🔍 Primeiras 5 linhas:"
+            head -5 .env
+            
+            # Deploy incremental inteligente
+            echo "🔄 Iniciando deploy incremental..."
+            
+            # Pull das novas imagens
+            docker compose -f docker-compose.prod.yml --env-file .env --profile core pull | cat
+            
+            # Verifica se é primeiro deploy ou atualização
+            RUNNING_SERVICES=$(docker ps --filter "name=backend-prod/ia" --format "{{.Names}}" | grep -E "(api|worker_|beat)" | wc -l)
+            echo "📊 Serviços da aplicação rodando: $RUNNING_SERVICES"
+            
+            if [ "$RUNNING_SERVICES" -eq 0 ]; then
+              echo "🆕 Primeiro deploy - iniciando todos os serviços..."
+              docker compose -f docker-compose.prod.yml --env-file .env --profile core up -d | cat
+            else
+              echo "🔄 Deploy incremental - atualizando apenas serviços da aplicação..."
+              # Atualiza apenas os serviços da aplicação (API, Workers individuais, Beat, Socket)
+              docker compose -f docker-compose.prod.yml --env-file .env --profile core up -d --no-deps \
+                api \
+                worker_ia \
+                beat \
+                | cat
+            fi
+            
+            # Aguarda os serviços iniciarem
+            echo "⏳ Aguardando serviços iniciarem..."
+            sleep 15
+            
+            # Verifica saúde dos serviços
+            echo "🔍 Verificando saúde dos serviços:"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep backend-prod/ia
+            
+            # Verifica se algum container falhou
+            FAILED_CONTAINERS=$(docker ps --filter "name=backend-prod/ia" --filter "status=exited" --format "{{.Names}}")
+            if [ -n "$FAILED_CONTAINERS" ]; then
+              echo "⚠️  Containers falharam: $FAILED_CONTAINERS"
+              echo "🔄 Tentando reiniciar containers falhados..."
+              docker compose -f docker-compose.prod.yml --env-file .env --profile core restart | cat
+              sleep 10
+            fi
+            
+            # Verificação final
+            echo "✅ Verificação final do deploy:"
+            echo "📊 Status dos serviços da aplicação:"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}" | grep -E "(backend-prod/ia|api|worker_|beat)"
+            
+            # Limpeza de imagens antigas (apenas as não utilizadas)
+            docker image prune -f | cat
+
+      - name: Deploy Summary
+        run: |
+          echo "🚀 Deploy concluído com sucesso!"
+          echo "📦 Imagem: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}"
+          echo "🎯 Ambiente: Produção"
+
