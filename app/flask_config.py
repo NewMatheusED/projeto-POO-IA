@@ -79,3 +79,5 @@ class Config:
     RABBITMQ_USER = os.getenv("RABBITMQ_USER")
     RABBITMQ_PASS = os.getenv("RABBITMQ_PASS")
     RABBITMQ_VHOST = os.getenv("RABBITMQ_VHOST")
+
+    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")

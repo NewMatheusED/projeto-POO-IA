@@ -36,3 +36,5 @@ pre-commit==4.3.0
 flask-marshmallow==1.3.0
 marshmallow-sqlalchemy==1.4.2
 pytest==8.4.2
+azure-ai-inference==1.0.0b9
+azure-core==1.35.1
