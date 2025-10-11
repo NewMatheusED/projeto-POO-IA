@@ -126,7 +126,10 @@ class TokenManager:
             return None
 
         return OAuthCredentials(
-            access_token=token, refresh_token="", expires_in=3600, token_type="Bearer"  # Não necessário para operações de leitura  # Valor padrão, não é relevante para as operações
+            access_token=token,
+            refresh_token="",
+            expires_in=3600,
+            token_type="Bearer",  # Não necessário para operações de leitura  # Valor padrão, não é relevante para as operações
         )
 
     def clear_cache(self) -> None:

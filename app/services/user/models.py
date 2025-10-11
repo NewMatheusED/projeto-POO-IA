@@ -1,8 +1,8 @@
 from enum import Enum
-from werkzeug.security import generate_password_hash, check_password_hash
 
 from sqlalchemy import Column, String
 from sqlalchemy import Enum as SQLEnum
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.models.base.models_base import BaseModel
 
@@ -14,7 +14,7 @@ class UserStatus(Enum):
 
 class User(BaseModel):
     __tablename__ = "users"
-    
+
     email = Column(String(255), nullable=False, unique=True)
     name = Column(String(255), nullable=False)
     password = Column(String(255), nullable=False)
@@ -31,10 +31,10 @@ class User(BaseModel):
     def to_dict(self):
         """Converte o usuário para dicionário"""
         return {
-            'id': self.id,
-            'email': self.email,
-            'name': self.name,
-            'status': self.status.value,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            "id": self.id,
+            "email": self.email,
+            "name": self.name,
+            "status": self.status.value,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

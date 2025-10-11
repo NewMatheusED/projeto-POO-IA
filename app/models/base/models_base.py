@@ -1,6 +1,6 @@
 from enum import Enum
 
-from sqlalchemy import Column, DateTime, Integer, String, func, ForeignKey
+from sqlalchemy import Column, DateTime, Integer, func
 
 from app.database import db
 
@@ -35,5 +35,3 @@ class BaseModel(db.Model):
     id = Column(Integer, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
-
-

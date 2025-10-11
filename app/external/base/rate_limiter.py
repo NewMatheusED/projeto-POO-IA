@@ -143,10 +143,10 @@ class RateLimitState:
     request_timestamps: Dict[HttpMethod, list] = field(default_factory=lambda: {m: [] for m in HttpMethod})
 
     # Timestamp da última vez que o limite foi atingido por método HTTP
-    last_limit_hit: Dict[HttpMethod, Optional[datetime]] = field(default_factory=lambda: {m: None for m in HttpMethod})
+    last_limit_hit: Dict[HttpMethod, Optional[datetime]] = field(default_factory=lambda: dict.fromkeys(HttpMethod))
 
     # Se o token está atualmente limitado por método HTTP
-    is_limited: Dict[HttpMethod, bool] = field(default_factory=lambda: {m: False for m in HttpMethod})
+    is_limited: Dict[HttpMethod, bool] = field(default_factory=lambda: dict.fromkeys(HttpMethod, False))
 
 
 class RateLimitExceededError(Exception):
@@ -194,7 +194,7 @@ class RateLimiter:
 
         # Log detalhado por método
         for method in HttpMethod:
-            self.logger.info(f"  - {method.value}: {config.max_requests[method]} req/{config.time_window[method]}s, " f"espera de {config.wait_time[method]}s")
+            self.logger.info(f"  - {method.value}: {config.max_requests[method]} req/{config.time_window[method]}s, espera de {config.wait_time[method]}s")
 
     def _get_config(self, token_id: str) -> RateLimitConfig:
         """Retorna a configuração para o token especificado ou a configuração padrão."""
@@ -297,7 +297,7 @@ class RateLimiter:
                 raise RateLimitExceededError(wait_time, method)
 
             # Bloqueia até que o limite seja liberado
-            self.logger.warning(f"Rate limit atingido para token {token_id}, método {method.value}. " f"Aguardando {wait_time} segundos.")
+            self.logger.warning(f"Rate limit atingido para token {token_id}, método {method.value}. Aguardando {wait_time} segundos.")
             time.sleep(wait_time)
 
             # Reseta o estado após a espera
@@ -329,7 +329,7 @@ class RateLimiter:
         if len(state.request_timestamps[method]) >= config.max_requests[method]:
             state.is_limited[method] = True
             state.last_limit_hit[method] = datetime.now()
-            self.logger.warning(f"Rate limit atingido para token {token_id}, método {method.value}. " f"Próximas requisições serão limitadas.")
+            self.logger.warning(f"Rate limit atingido para token {token_id}, método {method.value}. Próximas requisições serão limitadas.")
 
     def register_limit_hit(self, token_id: str, method_str: str, retry_after: Optional[int] = None) -> None:
         """
@@ -365,4 +365,4 @@ class RateLimiter:
             # Atualiza a configuração do token
             self.token_configs[token_id] = new_config
 
-        self.logger.warning(f"Rate limit atingido para token {token_id}, método {method.value}. " f"Aguardando {retry_after or config.wait_time[method]} segundos antes de novas requisições.")
+        self.logger.warning(f"Rate limit atingido para token {token_id}, método {method.value}. Aguardando {retry_after or config.wait_time[method]} segundos antes de novas requisições.")
