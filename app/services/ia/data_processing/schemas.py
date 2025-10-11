@@ -26,7 +26,7 @@ class ProcessingRequestSchema(Schema):
     priority = fields.Int(load_default=None, validate=lambda x: x is None or 1 <= x <= 5)
 
     # Configurações de processamento
-    source = fields.Str(load_default="direct", validate=lambda x: x in ["ai", "direct"])
+    source = fields.Str(load_default="direct", validate=lambda x: x in ["ai", "direct", "auto"])
     variable_key = fields.Str(load_default="variable")
     enable_enrichment = fields.Bool(load_default=True)
     enable_persistence = fields.Bool(load_default=True)
