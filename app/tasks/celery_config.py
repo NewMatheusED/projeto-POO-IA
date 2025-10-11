@@ -1,6 +1,7 @@
 # from datetime import timedelta
 
 from celery import Celery
+
 # from celery.schedules import crontab
 from kombu import Exchange, Queue
 
@@ -22,16 +23,12 @@ TASK_MODULES = [
     "app.tasks",
 ]
 
-task_queues = (
-    Queue("ai_queue", default_exchange, routing_key="ai"),
-)
+task_queues = (Queue("ai_queue", default_exchange, routing_key="ai"),)
 
-task_routes = {
-}
+task_routes = {}
 
 # Configuração de tarefas periódicas
-beat_schedule = {
-}
+beat_schedule = {}
 
 
 def make_celery(app_name=__name__):

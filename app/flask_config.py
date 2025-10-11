@@ -30,7 +30,6 @@ def _build_sqlalchemy_uri() -> str:
 
 
 class Config:
-
     REDIS_URL = os.getenv("REDIS_URL")
 
     REDIS_PASS = os.getenv("REDIS_PASSWORD")

@@ -317,7 +317,7 @@ class RedisTimelineCache(CacheStrategy[T]):
             return {key: json.loads(value) if value else None for key, value in zip(keys, results)}
         except Exception as e:
             logger.error(f"Erro ao buscar múltiplos itens do cache: {e}")
-            return {key: None for key in keys}
+            return dict.fromkeys(keys)
 
     def set_many(self, items: Dict[str, T], ttl_seconds: int = None) -> bool:
         """

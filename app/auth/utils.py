@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def save_session_data(user_data, refresh_token_jti=None, session_id=None, user_agent=None, ip_address=None):
     """
     Salva dados da sessão do usuário no Redis.
-    
+
     Args:
         user_data (dict): Dados do usuário
         refresh_token_jti (str): JTI do refresh token
@@ -22,20 +22,20 @@ def save_session_data(user_data, refresh_token_jti=None, session_id=None, user_a
     """
     logger.info(f"user_data: {user_data}")
     redis_client = get_redis_client()
-    
+
     # Usar user_id como chave principal
     user_id = str(user_data.get("id", user_data.get("pin")))
-    
+
     existing_sessions = redis_client.get(user_id)
     sessions_list = []
-    
+
     if existing_sessions:
         sessions_list = json.loads(existing_sessions)
         logger.info(f"Sessões existentes do usuário: {sessions_list}")
 
         # Remover sessões antigas do mesmo usuário
         sessions_list = [session for session in sessions_list if session.get("id") != user_data.get("id")]
-    
+
     # Preparar dados da sessão
     session_data = {
         "id": user_data.get("id"),
@@ -45,12 +45,12 @@ def save_session_data(user_data, refresh_token_jti=None, session_id=None, user_a
         "session_id": session_id,
         "user_agent": user_agent,
         "ip_address": ip_address,
-        "expires_at": (datetime.now() + Config.TOKEN_EXPIRATION).timestamp()
+        "expires_at": (datetime.now() + Config.TOKEN_EXPIRATION).timestamp(),
     }
-    
+
     sessions_list.append(session_data)
     logger.info(f"sessions_list: {sessions_list}")
-    
+
     # Salvar no Redis com TTL
     redis_client.set(user_id, json.dumps(sessions_list), ex=int(Config.TOKEN_EXPIRATION.total_seconds()))
 
@@ -58,25 +58,25 @@ def save_session_data(user_data, refresh_token_jti=None, session_id=None, user_a
 def remove_single_user_session_by_user_id_hash(user_id, session_id):
     """
     Remove uma sessão específica de um usuário pelo user_id.
-    
+
     Args:
         user_id (str): ID do usuário
         session_id (str): ID da sessão a ser removida
-        
+
     Returns:
         tuple: (success: bool, message: str)
     """
     try:
         redis_client = get_redis_client()
         active_sessions = get_active_sessions_by_user_id(user_id)
-        
+
         if not active_sessions:
             return True, f"Nenhuma sessão ativa encontrada para o usuário {user_id}"
 
         # Filtrar sessões, removendo a sessão especificada
         updated_sessions = []
         session_removed = False
-        
+
         for session in active_sessions:
             if session.get("session_id") != session_id:
                 updated_sessions.append(session)
@@ -90,9 +90,9 @@ def remove_single_user_session_by_user_id_hash(user_id, session_id):
             else:
                 # Se não há mais sessões, remover a chave
                 redis_client.delete(user_id)
-            
+
             logger.info(f"Sessão {session_id} removida com sucesso para o usuário {user_id}")
-            return True, f"Sessão removida com sucesso"
+            return True, "Sessão removida com sucesso"
         else:
             return False, f"Sessão {session_id} não encontrada para o usuário {user_id}"
 

@@ -8,9 +8,9 @@ from flask import Blueprint, request
 from marshmallow import ValidationError
 
 from app.services.ia.controller import AIController
-from app.services.ia.interfaces import AIServiceError, AIConnectionError, AIAuthenticationError
+from app.services.ia.interfaces import AIAuthenticationError, AIConnectionError, AIServiceError
 from app.services.ia.schema import AIRequestSchema, ChatCompletionSchema
-from app.utils.responses import success_response, error_response
+from app.utils.responses import error_response, success_response
 
 ia_bp = Blueprint("ia", __name__)
 
@@ -28,7 +28,7 @@ def health_check():
 def chat_completion():
     """
     Endpoint para chat completion com IA.
-    
+
     Body esperado:
     {
         "user_message": "Sua mensagem aqui",
@@ -47,7 +47,7 @@ def chat_completion():
         # Valida dados de entrada
         schema = ChatCompletionSchema()
         data = schema.load_with_variables(request.get_json() or {})
-        
+
         # Executa chat completion
         response = ai_controller.chat_completion(
             user_message=data["user_message"],
@@ -56,11 +56,11 @@ def chat_completion():
             top_p=data.get("top_p"),
             max_tokens=data.get("max_tokens"),
             response_format=data.get("response_format", "text"),
-            variables=data.get("variables")
+            variables=data.get("variables"),
         )
-        
+
         return success_response(response)
-        
+
     except ValidationError as e:
         return error_response("Dados inválidos", 400, e.messages)
     except AIServiceError as e:
@@ -73,7 +73,7 @@ def chat_completion():
 def complete():
     """
     Endpoint para completion com lista de mensagens.
-    
+
     Body esperado:
     {
         "messages": [
@@ -90,18 +90,14 @@ def complete():
         # Valida dados de entrada
         schema = AIRequestSchema()
         data = schema.load(request.get_json() or {})
-        
+
         # Executa completion
         response = ai_controller.complete_with_messages(
-            messages=data["messages"],
-            temperature=data.get("temperature"),
-            top_p=data.get("top_p"),
-            max_tokens=data.get("max_tokens"),
-            response_format=data.get("response_format", "text")
+            messages=data["messages"], temperature=data.get("temperature"), top_p=data.get("top_p"), max_tokens=data.get("max_tokens"), response_format=data.get("response_format", "text")
         )
-        
+
         return success_response(response)
-        
+
     except ValidationError as e:
         return error_response("Dados inválidos", 400, e.messages)
     except AIServiceError as e:
@@ -115,10 +111,7 @@ def list_models():
     """Endpoint para listar modelos disponíveis."""
     # Por enquanto retorna o modelo configurado
     # Futuramente pode ser expandido para listar todos os modelos disponíveis
-    return success_response({
-        "models": ["xai/grok-3-mini"],
-        "current_model": "xai/grok-3-mini"
-    })
+    return success_response({"models": ["xai/grok-3-mini"], "current_model": "xai/grok-3-mini"})
 
 
 @ia_bp.errorhandler(AIConnectionError)
