@@ -13,8 +13,6 @@ rabbitmq_pass = Config.RABBITMQ_PASS
 rabbitmq_vhost = Config.RABBITMQ_VHOST
 
 
-redis_url = Config.REDIS_URL if str(Config.PRODUCTION).lower() == "true" else Config.REDIS_URL_DEV
-
 broker_url = f"pyamqp://{rabbitmq_user}:{rabbitmq_pass}@{rabbitmq_host}:{rabbitmq_port}/{rabbitmq_vhost}"
 
 default_exchange = Exchange("poo_tasks", type="direct")
@@ -41,7 +39,7 @@ def make_celery(app_name=__name__):
     celery = Celery(
         app_name,
         broker=broker_url,
-        backend=redis_url,
+        backend=Config.REDIS_URL,
         include=TASK_MODULES,
     )
 
