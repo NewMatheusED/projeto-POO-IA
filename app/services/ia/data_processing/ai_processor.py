@@ -75,10 +75,8 @@ class AIResponseProcessor(DataProcessor):
         if json_data:
             extracted.update(json_data)
 
-        # Extrai a variável principal se encontrada
-        main_variable = self._extract_main_variable(content)
-        if main_variable:
-            extracted[self.variable_key] = main_variable
+        # Para análise legislativa, a variável principal vem do contexto externo
+        # Não precisa extrair do conteúdo da IA
 
         # Extrai outras informações relevantes
         extracted.update(self._extract_additional_info(content))
@@ -97,31 +95,6 @@ class AIResponseProcessor(DataProcessor):
                 return json.loads(json_str)
         except (json.JSONDecodeError, ValueError):
             pass
-
-        return None
-
-    def _extract_main_variable(self, content: str) -> Optional[str]:
-        """
-        Extrai a variável principal do conteúdo.
-
-        Implementação básica - pode ser customizada conforme necessidade.
-        """
-        # Procura por padrões específicos na resposta
-        lines = content.split("\n")
-
-        for line in lines:
-            line = line.strip()
-            # Procura por linhas que parecem conter a variável principal
-            if any(keyword in line.lower() for keyword in ["valor", "dado", "informação", "resultado"]):
-                # Remove prefixos comuns e extrai o valor
-                for prefix in ["valor:", "dado:", "informação:", "resultado:"]:
-                    if line.lower().startswith(prefix):
-                        return line[len(prefix) :].strip()
-
-        # Se não encontrou padrão específico, retorna a primeira linha não vazia
-        for line in lines:
-            if line.strip():
-                return line.strip()
 
         return None
 

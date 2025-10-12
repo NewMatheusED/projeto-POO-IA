@@ -121,34 +121,47 @@ class ExternalAPIEnricher(DataEnricher):
         return datetime.now().isoformat()
 
 
-class MockEnricher(DataEnricher):
-    """Enriquecedor mock para desenvolvimento e testes."""
+class VoteEnricher(DataEnricher):
+    """Enriquecedor que adiciona dados de votos aos projetos legislativos."""
 
-    def __init__(self, mock_data: Optional[Dict[str, Any]] = None):
+    def __init__(self, votes_service=None):
         """
-        Inicializa o enriquecedor mock.
+        Inicializa o enriquecedor de votos.
 
         Args:
-            mock_data: Dados mock para retornar
+            votes_service: Serviço de votos
         """
-        self.mock_data = mock_data or {"external_id": "mock_123", "additional_info": "Dados mock para desenvolvimento", "confidence_score": 0.95, "source": "mock_api"}
+        self.votes_service = votes_service
 
     def enrich(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Enriquece dados com informações mock.
+        Enriquece dados com informações de votos.
 
         Args:
             data: Dados para enriquecer
 
         Returns:
-            Dados enriquecidos com informações mock
+            Dados enriquecidos com informações de votos
         """
         enriched_data = data.copy()
 
-        # Adiciona dados mock
-        enriched_data["enriched_data"] = self.mock_data.copy()
+        # Adiciona metadados de enriquecimento
+        if "metadata" not in enriched_data:
+            enriched_data["metadata"] = {}
+
+        # Enriquece com dados de votos se disponível
+        project_id = data.get("project_id")
+        if project_id and self.votes_service:
+            try:
+                votes_data = self.votes_service.get_project_votes(project_id)
+                if votes_data:
+                    enriched_data["dados_votacao"] = votes_data.to_dict()
+            except Exception as e:
+                enriched_data["metadata"]["votes_enrichment_error"] = str(e)
+
+        enriched_data["metadata"]["enrichment_source"] = "votes_service"
         enriched_data["metadata"]["enrichment_timestamp"] = self._get_current_timestamp()
-        enriched_data["metadata"]["enrichment_source"] = "mock_api"
+        enriched_data["metadata"]["enrichment_status"] = "completed"
 
         return enriched_data
 

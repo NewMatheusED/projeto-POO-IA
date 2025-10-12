@@ -20,15 +20,25 @@ default_exchange = Exchange("poo_tasks", type="direct")
 
 # Lista única de módulos de tasks (DRY)
 TASK_MODULES = [
-    "app.tasks",
+    "app.tasks.legislative_tasks",
 ]
 
-task_queues = (Queue("ai_queue", default_exchange, routing_key="ai"),)
+# Simplifica configuração da fila
+task_queues = (Queue("ia_queue"),)
 
-task_routes = {}
+task_routes = {
+    "app.tasks.legislative_tasks.analyze_project": {"queue": "ia_queue"},
+    "app.tasks.legislative_tasks.automated_analysis": {"queue": "ia_queue"},
+}
 
 # Configuração de tarefas periódicas
-beat_schedule = {}
+beat_schedule = {
+    'analyze-legislative-projects': {
+        'task': 'app.tasks.legislative_tasks.automated_analysis',
+        'schedule': 3600.0,  # Executa a cada 1 hora (3600 segundos)
+        'args': (50,)  # Processa 50 projetos por execução
+    },
+}
 
 
 def make_celery(app_name=__name__):

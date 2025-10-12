@@ -60,20 +60,42 @@ class AIController:
         Raises:
             AIServiceError: Em caso de erro
         """
-        try:
-            # Substitui variáveis na mensagem do usuário
-            processed_user_message = self._process_message_with_variables(user_message, variables)
+        import time
+        max_retries = 3
+        base_delay = 60  # 60 segundos base para rate limit
+        
+        for attempt in range(max_retries):
+            try:
+                # Substitui variáveis na mensagem do usuário
+                processed_user_message = self._process_message_with_variables(user_message, variables)
 
-            # Cria mensagens
-            messages = [SystemMessage(system_message), UserMessage(processed_user_message)]
+                # Cria mensagens
+                messages = [SystemMessage(system_message), UserMessage(processed_user_message)]
 
-            # Executa requisição para a IA
-            response = self._client.complete(messages=messages, temperature=temperature, top_p=top_p, max_tokens=max_tokens, response_format=response_format)
+                # Executa requisição para a IA
+                response = self._client.complete(messages=messages, temperature=temperature, top_p=top_p, max_tokens=max_tokens, response_format=response_format)
 
-            return response
+                return response
 
-        except Exception as e:
-            raise AIServiceError(f"Erro no chat completion: {str(e)}")
+            except Exception as e:
+                error_str = str(e).lower()
+                
+                # Verifica se é rate limit
+                if "rate" in error_str or "429" in error_str:
+                    if attempt < max_retries - 1:
+                        delay = base_delay * (2 ** attempt)  # Exponential backoff
+                        print(f"Rate limit atingido. Aguardando {delay}s antes da tentativa {attempt + 2}/{max_retries}")
+                        time.sleep(delay)
+                        continue
+                    else:
+                        raise AIServiceError(f"Rate limit persistente após {max_retries} tentativas: {str(e)}")
+                else:
+                    if attempt == max_retries - 1:
+                        raise AIServiceError(f"Erro no chat completion após {max_retries} tentativas: {str(e)}")
+                    else:
+                        print(f"Erro na tentativa {attempt + 1}: {str(e)}")
+        
+        raise AIServiceError("Erro inesperado no chat completion")
 
     def complete_with_messages(
         self, messages: List[Dict[str, str]], temperature: Optional[float] = None, top_p: Optional[float] = None, max_tokens: Optional[int] = None, response_format: str = "text"

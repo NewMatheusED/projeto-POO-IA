@@ -9,9 +9,9 @@ from typing import Any, Dict, List, Optional
 
 from app.services.ia.data_processing.ai_processor import AIResponseProcessor
 from app.services.ia.data_processing.direct_processor import DirectDataProcessor, HybridProcessor
-from app.services.ia.data_processing.enricher import ExternalAPIEnricher, MockEnricher
+from app.services.ia.data_processing.enricher import ExternalAPIEnricher, VoteEnricher
 from app.services.ia.data_processing.interfaces import DataEnricher, DataPersister, DataProcessingError, DataProcessor, ProcessingError, ProcessingPipeline
-from app.services.ia.data_processing.persister import FilePersister, MockPersister
+from app.services.ia.data_processing.persister import DatabasePersister
 
 
 class DataProcessingPipeline(ProcessingPipeline):
@@ -118,20 +118,17 @@ class DataProcessingPipeline(ProcessingPipeline):
         if enrichment_config:
             return ExternalAPIEnricher(enrichment_config)
         else:
-            return MockEnricher()
+            return VoteEnricher()
 
     def _create_default_persister(self) -> DataPersister:
         """Cria persistidor padrão."""
         persistence_config = self.config.get("persistence_config", {})
-        persistence_type = persistence_config.get("type", "mock")
+        persistence_type = persistence_config.get("type", "database")
 
-        if persistence_type == "file":
-            return FilePersister(persistence_config.get("base_path", "data/processed"))
-        elif persistence_type == "database":
-            # TODO: Implementar quando banco estiver pronto
-            return MockPersister(persistence_config.get("storage_file"))
+        if persistence_type == "database":
+            return DatabasePersister(persistence_config.get("database_config"))
         else:
-            return MockPersister(persistence_config.get("storage_file"))
+            return DatabasePersister()
 
     def _get_current_timestamp(self) -> str:
         """Retorna timestamp atual."""

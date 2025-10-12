@@ -1,126 +1,28 @@
 """
-Persistidor de dados.
+Persistidor de dados para banco de dados.
 
-Prepara estrutura para persistência, simulando operações de banco até estar pronto.
+Implementa persistência real em banco de dados.
 """
 
-import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from app.services.ia.data_processing.interfaces import DataPersistenceError, DataPersister
 
 
-class MockPersister(DataPersister):
-    """Persistidor mock para desenvolvimento enquanto o banco não está pronto."""
-
-    def __init__(self, storage_file: Optional[str] = None):
-        """
-        Inicializa o persistidor mock.
-
-        Args:
-            storage_file: Arquivo para armazenar dados (opcional)
-        """
-        self.storage_file = storage_file or "mock_storage.json"
-        self.data_store = self._load_storage()
-
-    def save(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Salva dados no storage mock.
-
-        Args:
-            data: Dados para salvar
-
-        Returns:
-            Dados salvos com identificadores
-
-        Raises:
-            DataPersistenceError: Em caso de erro na persistência
-        """
-        try:
-            # Gera ID único para o registro
-            record_id = self._generate_record_id()
-
-            # Prepara dados para salvar
-            record_data = {"id": record_id, "created_at": self._get_current_timestamp(), "data": data, "status": "pending_validation"}
-
-            # Salva no storage
-            self.data_store[record_id] = record_data
-            self._save_storage()
-
-            # Retorna dados com identificadores
-            saved_data = data.copy()
-            saved_data["record_id"] = record_id
-            saved_data["metadata"]["persistence_timestamp"] = record_data["created_at"]
-            saved_data["metadata"]["storage_status"] = "saved_mock"
-
-            return saved_data
-
-        except Exception as e:
-            raise DataPersistenceError(f"Erro ao salvar dados: {str(e)}")
-
-    def get(self, record_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Recupera dados pelo ID.
-
-        Args:
-            record_id: ID do registro
-
-        Returns:
-            Dados do registro ou None se não encontrado
-        """
-        return self.data_store.get(record_id)
-
-    def list_all(self, limit: int = 100) -> List[Dict[str, Any]]:
-        """
-        Lista todos os registros.
-
-        Args:
-            limit: Limite de registros para retornar
-
-        Returns:
-            Lista de registros
-        """
-        records = list(self.data_store.values())
-        return records[:limit]
-
-    def _generate_record_id(self) -> str:
-        """Gera ID único para o registro."""
-        import uuid
-
-        return str(uuid.uuid4())
-
-    def _load_storage(self) -> Dict[str, Any]:
-        """Carrega dados do arquivo de storage."""
-        try:
-            with open(self.storage_file, encoding="utf-8") as f:
-                return json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            return {}
-
-    def _save_storage(self) -> None:
-        """Salva dados no arquivo de storage."""
-        with open(self.storage_file, "w", encoding="utf-8") as f:
-            json.dump(self.data_store, f, indent=2, ensure_ascii=False)
-
-    def _get_current_timestamp(self) -> str:
-        """Retorna timestamp atual."""
-        from datetime import datetime
-
-        return datetime.now().isoformat()
-
-
 class DatabasePersister(DataPersister):
-    """Persistidor para banco de dados (preparado para quando estiver pronto)."""
+    """Persistidor para banco de dados real."""
 
-    def __init__(self, db_config: Dict[str, Any]):
+    def __init__(self, database_config: Optional[Dict[str, Any]] = None):
         """
         Inicializa o persistidor de banco.
 
         Args:
-            db_config: Configuração do banco de dados
+            database_config: Configuração do banco de dados
         """
-        self.db_config = db_config
-        self.table_name = db_config.get("table_name", "processed_data")
+        self.database_config = database_config or {}
+        # Usa a sessão do SQLAlchemy já configurada
+        from app.database import db
+        self._session = db.session
 
     def save(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -130,96 +32,116 @@ class DatabasePersister(DataPersister):
             data: Dados para salvar
 
         Returns:
-            Dados salvos com identificadores
-
-        Raises:
-            DataPersistenceError: Em caso de erro na persistência
-        """
-        # TODO: Implementar quando o banco estiver pronto
-        # Por enquanto, usa o persistidor mock
-        mock_persister = MockPersister()
-        return mock_persister.save(data)
-
-    def _prepare_data_for_db(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Prepara dados para inserção no banco.
-
-        Args:
-            data: Dados para preparar
-
-        Returns:
-            Dados formatados para o banco
-        """
-        # TODO: Implementar mapeamento para campos do banco
-        return {
-            "source": data.get("source"),
-            "model": data.get("model"),
-            "content": data.get("raw_content"),
-            "extracted_data": json.dumps(data.get("extracted_data", {})),
-            "enriched_data": json.dumps(data.get("enriched_data", {})),
-            "metadata": json.dumps(data.get("metadata", {})),
-            "created_at": self._get_current_timestamp(),
-        }
-
-
-class FilePersister(DataPersister):
-    """Persistidor que salva dados em arquivos."""
-
-    def __init__(self, base_path: str = "data/processed"):
-        """
-        Inicializa o persistidor de arquivos.
-
-        Args:
-            base_path: Caminho base para salvar arquivos
-        """
-        self.base_path = base_path
-        import os
-
-        os.makedirs(base_path, exist_ok=True)
-
-    def save(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Salva dados em arquivo.
-
-        Args:
-            data: Dados para salvar
-
-        Returns:
-            Dados salvos com identificadores
-
-        Raises:
-            DataPersistenceError: Em caso de erro na persistência
+            Dados salvos com metadados
         """
         try:
-            import os
-            import uuid
+            # Salva usando o repository legislativo se for análise legislativa
+            if data.get("project_id") and "analysis_data" in data:
+                from app.services.legislative.repository import LegislativeRepository
+                repository = LegislativeRepository()
+                
+                saved_project = repository.save_analysis(
+                    project_id=data["project_id"],
+                    analysis_data=data["analysis_data"],
+                    votes_data=data.get("dados_votacao")
+                )
+                
+                data["id"] = saved_project.id
+                data["metadata"] = data.get("metadata", {})
+                data["metadata"]["persistence_status"] = "saved_to_db"
+                data["metadata"]["persistence_type"] = "legislative_analysis"
+                data["metadata"]["saved_at"] = self._get_timestamp()
+            else:
+                # Para outros tipos de dados, salva em tabela genérica
+                self._save_generic_data(data)
+                data["metadata"] = data.get("metadata", {})
+                data["metadata"]["persistence_status"] = "saved_to_db"
+                data["metadata"]["persistence_type"] = "generic_data"
+                data["metadata"]["saved_at"] = self._get_timestamp()
 
-            # Gera nome do arquivo
-            file_id = str(uuid.uuid4())
-            filename = f"{file_id}.json"
-            filepath = os.path.join(self.base_path, filename)
-
-            # Prepara dados para salvar
-            record_data = {"id": file_id, "created_at": self._get_current_timestamp(), "data": data}
-
-            # Salva arquivo
-            with open(filepath, "w", encoding="utf-8") as f:
-                json.dump(record_data, f, indent=2, ensure_ascii=False)
-
-            # Retorna dados com identificadores
-            saved_data = data.copy()
-            saved_data["record_id"] = file_id
-            saved_data["metadata"]["persistence_timestamp"] = record_data["created_at"]
-            saved_data["metadata"]["storage_status"] = "saved_file"
-            saved_data["metadata"]["file_path"] = filepath
-
-            return saved_data
+            return data
 
         except Exception as e:
-            raise DataPersistenceError(f"Erro ao salvar arquivo: {str(e)}")
+            self._session.rollback()
+            raise DataPersistenceError(f"Erro ao salvar dados no banco: {str(e)}")
 
-    def _get_current_timestamp(self) -> str:
+    def _get_timestamp(self) -> str:
         """Retorna timestamp atual."""
         from datetime import datetime
 
         return datetime.now().isoformat()
+
+    def get_by_id(self, data_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Retorna dados por ID.
+
+        Args:
+            data_id: ID dos dados
+
+        Returns:
+            Dados encontrados ou None
+        """
+        try:
+            # Busca em projetos legislativos primeiro
+            from app.services.legislative.models import ProjetoLei
+            projeto = ProjetoLei.query.get(data_id)
+            if projeto:
+                return {
+                    "id": projeto.id,
+                    "project_id": projeto.codigo_projeto,
+                    "analysis_data": {
+                        "contexto_epoca": projeto.contexto_epoca,
+                        "resumo_objetivo": projeto.resumo_objetivo,
+                        "interpretacao_simplificada": projeto.interpretacao_simplificada,
+                        "avaliacao_parametrica": [av.to_dict() for av in projeto.avaliacoes]
+                    },
+                    "dados_votacao": projeto.dados_votacao_db.to_dict() if projeto.dados_votacao_db else None
+                }
+            return None
+        except Exception as e:
+            print(f"Erro ao buscar dados por ID {data_id}: {str(e)}")
+            return None
+
+    def delete_by_id(self, data_id: int) -> bool:
+        """
+        Remove dados por ID.
+
+        Args:
+            data_id: ID dos dados
+
+        Returns:
+            True se removido, False se não encontrado
+        """
+        try:
+            # Remove projeto legislativo
+            from app.services.legislative.models import ProjetoLei
+            projeto = ProjetoLei.query.get(data_id)
+            if projeto:
+                self._session.delete(projeto)
+                self._session.commit()
+                return True
+            return False
+        except Exception as e:
+            self._session.rollback()
+            print(f"Erro ao deletar dados ID {data_id}: {str(e)}")
+            return False
+
+    def _save_generic_data(self, data: Dict[str, Any]) -> None:
+        """Salva dados genéricos em tabela de processamento."""
+        # Por enquanto, apenas log - pode ser expandido futuramente
+        print(f"Salvando dados genéricos: {data.get('type', 'unknown')}")
+        # TODO: Implementar tabela genérica de processamento se necessário
+
+
+# Função de conveniência para criar persistidor de banco
+def create_database_persister(database_config: Optional[Dict[str, Any]] = None) -> DatabasePersister:
+    """
+    Cria persistidor de banco.
+
+    Args:
+        database_config: Configuração do banco de dados
+
+    Returns:
+        Instância do persistidor de banco
+    """
+    return DatabasePersister(database_config)

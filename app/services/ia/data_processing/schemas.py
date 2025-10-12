@@ -80,10 +80,10 @@ class EnrichmentConfigSchema(Schema):
 class PersistenceConfigSchema(Schema):
     """Schema para configuração de persistência."""
 
-    type = fields.Str(required=True, validate=lambda x: x in ["mock", "file", "database"])
+    type = fields.Str(required=True, validate=lambda x: x in ["database"])
     table_name = fields.Str(load_default="processed_data")
     base_path = fields.Str(load_default="data/processed")
-    storage_file = fields.Str(load_default="mock_storage.json")
+    database_config = fields.Dict(load_default={})
 
 
 class PipelineConfigSchema(Schema):

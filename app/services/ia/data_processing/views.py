@@ -21,7 +21,7 @@ processing_service = ProcessingService()
 @processing_bp.route("/", methods=["GET"])
 def health_check():
     """Endpoint para verificar saúde do serviço de processamento."""
-    return success_response({"message": "Serviço de processamento de dados está funcionando", "status": "healthy", "available_pipelines": ["default", "ai", "direct"]})
+    return success_response({"message": "Serviço de processamento de dados está funcionando", "status": "healthy", "available_pipelines": ["default", "ai", "direct"]}).to_json_response()
 
 
 @processing_bp.route("/process", methods=["POST"])
@@ -58,14 +58,14 @@ def process_data():
             result = processing_service.process_auto_detect(data)
 
         if result["success"]:
-            return success_response(result)
+            return success_response(result).to_json_response()
         else:
-            return error_response("Erro no processamento", 500, result["error"])
+            return error_response("Erro no processamento", 500, result["error"]).to_json_response()
 
     except ValidationError as e:
-        return error_response("Dados inválidos", 400, e.messages)
+        return error_response("Dados inválidos", 400, e.messages).to_json_response()
     except Exception as e:
-        return error_response("Erro interno do servidor", 500, str(e))
+        return error_response("Erro interno do servidor", 500, str(e)).to_json_response()
 
 
 @processing_bp.route("/process/ai", methods=["POST"])
@@ -162,12 +162,12 @@ def process_batch():
         controller = processing_service.get_controller("default")
         result = controller.process_batch(data["items"])
 
-        return success_response(result)
+        return success_response(result).to_json_response()
 
     except ValidationError as e:
-        return error_response("Dados inválidos", 400, e.messages)
+        return error_response("Dados inválidos", 400, e.messages).to_json_response()
     except Exception as e:
-        return error_response("Erro interno do servidor", 500, str(e))
+        return error_response("Erro interno do servidor", 500, str(e)).to_json_response()
 
 
 @processing_bp.route("/stats", methods=["GET"])
@@ -177,10 +177,10 @@ def get_stats():
         controller = processing_service.get_controller("default")
         stats = controller.get_processing_stats()
 
-        return success_response(stats)
+        return success_response(stats).to_json_response()
 
     except Exception as e:
-        return error_response("Erro ao obter estatísticas", 500, str(e))
+        return error_response("Erro ao obter estatísticas", 500, str(e)).to_json_response()
 
 
 # Integração com o endpoint de IA existente
@@ -210,7 +210,7 @@ def ai_complete_with_processing():
         user_message = request_data.get("user_message")
 
         if not user_message:
-            return error_response("user_message é obrigatório", 400)
+            return error_response("user_message é obrigatório", 400).to_json_response()
 
         # Executa chat completion da IA
         ai_controller = AIController()
@@ -225,9 +225,9 @@ def ai_complete_with_processing():
         if request_data.get("process_result", True):
             processing_result = processing_service.process_auto_detect(ai_response)
 
-            return success_response({"ai_response": ai_response, "processing_result": processing_result})
+            return success_response({"ai_response": ai_response, "processing_result": processing_result}).to_json_response()
         else:
-            return success_response({"ai_response": ai_response})
+            return success_response({"ai_response": ai_response}).to_json_response()
 
     except Exception as e:
-        return error_response("Erro na integração IA + processamento", 500, str(e))
+        return error_response("Erro na integração IA + processamento", 500, str(e)).to_json_response()

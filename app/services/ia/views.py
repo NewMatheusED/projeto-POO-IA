@@ -21,7 +21,7 @@ ai_controller = AIController()
 @ia_bp.route("/", methods=["GET"])
 def health_check():
     """Endpoint para verificar saúde do serviço de IA."""
-    return success_response({"message": "Serviço de IA está funcionando", "status": "healthy"})
+    return success_response({"message": "Serviço de IA está funcionando", "status": "healthy"}).to_json_response()
 
 
 @ia_bp.route("/chat", methods=["POST"])
@@ -59,14 +59,14 @@ def chat_completion():
             variables=data.get("variables"),
         )
 
-        return success_response(response)
+        return success_response(response).to_json_response()
 
     except ValidationError as e:
-        return error_response("Dados inválidos", 400, e.messages)
+        return error_response("Dados inválidos", 400, e.messages).to_json_response()
     except AIServiceError as e:
-        return error_response("Erro no serviço de IA", 500, str(e))
+        return error_response("Erro no serviço de IA", 500, str(e)).to_json_response()
     except Exception as e:
-        return error_response("Erro interno do servidor", 500, str(e))
+        return error_response("Erro interno do servidor", 500, str(e)).to_json_response()
 
 
 @ia_bp.route("/complete", methods=["POST"])
@@ -96,14 +96,14 @@ def complete():
             messages=data["messages"], temperature=data.get("temperature"), top_p=data.get("top_p"), max_tokens=data.get("max_tokens"), response_format=data.get("response_format", "text")
         )
 
-        return success_response(response)
+        return success_response(response).to_json_response()
 
     except ValidationError as e:
-        return error_response("Dados inválidos", 400, e.messages)
+        return error_response("Dados inválidos", 400, e.messages).to_json_response()
     except AIServiceError as e:
-        return error_response("Erro no serviço de IA", 500, str(e))
+        return error_response("Erro no serviço de IA", 500, str(e)).to_json_response()
     except Exception as e:
-        return error_response("Erro interno do servidor", 500, str(e))
+        return error_response("Erro interno do servidor", 500, str(e)).to_json_response()
 
 
 @ia_bp.route("/models", methods=["GET"])
@@ -111,16 +111,16 @@ def list_models():
     """Endpoint para listar modelos disponíveis."""
     # Por enquanto retorna o modelo configurado
     # Futuramente pode ser expandido para listar todos os modelos disponíveis
-    return success_response({"models": ["xai/grok-3-mini"], "current_model": "xai/grok-3-mini"})
+    return success_response({"models": ["xai/grok-3-mini"], "current_model": "xai/grok-3-mini"}).to_json_response()
 
 
 @ia_bp.errorhandler(AIConnectionError)
 def handle_connection_error(e):
     """Handler para erros de conexão com IA."""
-    return error_response("Erro de conexão com o serviço de IA", 503, str(e))
+    return error_response("Erro de conexão com o serviço de IA", 503, str(e)).to_json_response()
 
 
 @ia_bp.errorhandler(AIAuthenticationError)
 def handle_auth_error(e):
     """Handler para erros de autenticação com IA."""
-    return error_response("Erro de autenticação com o serviço de IA", 401, str(e))
+    return error_response("Erro de autenticação com o serviço de IA", 401, str(e)).to_json_response()

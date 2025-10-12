@@ -133,8 +133,31 @@ class DataProcessingController:
         Returns:
             Estatísticas do processamento
         """
-        # TODO: Implementar coleta de estatísticas quando necessário
-        return {"pipeline_type": type(self.pipeline).__name__, "config": self.pipeline.config, "status": "active"}
+        # Coleta estatísticas do pipeline e banco de dados
+        try:
+            from app.services.legislative.repository import LegislativeRepository
+            repository = LegislativeRepository()
+            db_stats = repository.get_projects_stats()
+            
+            return {
+                "pipeline_type": type(self.pipeline).__name__,
+                "config": self.pipeline.config,
+                "status": "active",
+                "database_stats": db_stats,
+                "processing_stats": {
+                    "total_processed": db_stats.get("total_projetos", 0),
+                    "with_evaluations": db_stats.get("projetos_com_avaliacoes", 0),
+                    "average_score": db_stats.get("nota_media_geral", 0.0)
+                }
+            }
+        except Exception as e:
+            # Fallback para estatísticas básicas
+            return {
+                "pipeline_type": type(self.pipeline).__name__,
+                "config": self.pipeline.config,
+                "status": "active",
+                "error": f"Erro ao coletar estatísticas: {str(e)}"
+            }
 
 
 class ProcessingService:

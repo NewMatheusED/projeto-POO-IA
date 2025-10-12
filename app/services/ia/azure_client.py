@@ -80,9 +80,14 @@ class AzureAIClient(AIClient):
             return self._convert_response_to_dict(response)
 
         except Exception as e:
-            if "authentication" in str(e).lower() or "unauthorized" in str(e).lower():
+            error_str = str(e).lower()
+            
+            # Verifica se é rate limit (429)
+            if "rate" in error_str or "429" in error_str:
+                raise AIServiceError(f"Rate limit atingido: {str(e)}")
+            elif "authentication" in error_str or "unauthorized" in error_str:
                 raise AIAuthenticationError(f"Erro de autenticação: {str(e)}")
-            elif "connection" in str(e).lower() or "timeout" in str(e).lower():
+            elif "connection" in error_str or "timeout" in error_str:
                 raise AIConnectionError(f"Erro de conexão: {str(e)}")
             else:
                 raise AIServiceError(f"Erro no serviço de IA: {str(e)}")
@@ -116,6 +121,17 @@ class AzureAIClient(AIClient):
             finish_reason = None
             if hasattr(response.choices[0], "finish_reason"):
                 finish_reason = response.choices[0].finish_reason
+
+            # Se o conteúdo é JSON, tenta fazer parse
+            if isinstance(content, str) and content.strip().startswith('{'):
+                try:
+                    import json
+                    parsed_content = json.loads(content)
+                    # Retorna o JSON parseado diretamente
+                    return parsed_content
+                except json.JSONDecodeError:
+                    # Se não conseguir fazer parse, retorna como texto
+                    pass
 
             return {"content": content, "model": model, "usage": usage, "finish_reason": finish_reason}
 
