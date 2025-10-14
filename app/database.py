@@ -65,12 +65,31 @@ def init_db(app):
             # Importar todos os modelos automaticamente ANTES de criar as tabelas
             import_all_models()
 
-            test_database_connection()
+            # Tentar conectar com retry logic
+            max_retries = 5
+            retry_delay = 5  # segundos
+            
+            for attempt in range(max_retries):
+                try:
+                    print(f"🔄 Tentativa {attempt + 1}/{max_retries} de conexão com o banco...")
+                    test_database_connection()
+                    print("✅ Conexão estabelecida com sucesso!")
+                    break
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        print(f"⚠️  Tentativa {attempt + 1} falhou: {str(e)}")
+                        print(f"⏳ Aguardando {retry_delay}s antes de tentar novamente...")
+                        import time
+                        time.sleep(retry_delay)
+                    else:
+                        raise
+            
             create_tables()
 
         except Exception as e:
-            print(f"⚠️  Não foi possível testar a conexão com o banco: {str(e)}")
+            print(f"❌ Não foi possível conectar ao banco após {max_retries} tentativas: {str(e)}")
             print("⚠️  A aplicação continuará rodando, mas pode haver problemas de conexão")
+            logger.error(f"❌ Erro ao inicializar banco de dados: {str(e)}")
 
 
 def create_tables():
@@ -106,6 +125,19 @@ def create_tables():
 def test_database_connection():
     """Testa a conexão com o banco de dados."""
     try:
+        # Mostrar informações de conexão (sem senha)
+        import os
+        from urllib.parse import urlparse
+        
+        db_uri = os.getenv("SQLALCHEMY_DATABASE_URI") or "não configurado"
+        parsed = urlparse(db_uri)
+        
+        print(f"🔍 Tentando conectar ao MySQL...")
+        print(f"   Host: {parsed.hostname or 'não especificado'}")
+        print(f"   Porta: {parsed.port or 'padrão (3306)'}")
+        print(f"   Database: {parsed.path.lstrip('/') or 'não especificado'}")
+        print(f"   User: {parsed.username or 'não especificado'}")
+        
         # Executa uma query simples para testar a conexão
         db.session.execute(text("SELECT 1"))
         print("✅ Conexão com banco de dados estabelecida com sucesso!")
@@ -126,12 +158,14 @@ def test_database_connection():
         print("2. O servidor MySQL está rodando")
         print("3. As credenciais estão corretas")
         print("4. O banco de dados existe")
+        print("5. O hostname está correto (deve ser 'mysql' no Docker)")
         logger.error(f"❌ Erro ao conectar com banco de dados: {error_msg}")
         logger.error("Verifique se:")
         logger.error("1. As variáveis de ambiente estão definidas corretamente")
         logger.error("2. O servidor MySQL está rodando")
         logger.error("3. As credenciais estão corretas")
         logger.error("4. O banco de dados existe")
+        logger.error("5. O hostname está correto (deve ser 'mysql' no Docker)")
         raise
     except Exception as e:
         print(f"❌ Erro inesperado ao testar conexão: {str(e)}")
