@@ -4,11 +4,12 @@ from app.flask_config import Config
 if Config.PRODUCTION == "true":
     try:
         from gevent import monkey  # type: ignore
-
-        monkey.patch_all()
+        # Patch tudo, incluindo SSL e threading
+        monkey.patch_all(ssl=True, aggressive=True)
     except Exception:
         pass
 
+from app.flask_config import Config
 from app import create_app
 
 app = create_app()
