@@ -1,7 +1,8 @@
-from app.flask_config import Config
+import os
 
-# Em produção com gevent, precisamos monkey-patch ANTES de qualquer import que use socket/ssl
-if Config.PRODUCTION == "true":
+# Monkey patch ANTES de qualquer import que use socket/ssl/threading
+# Isso deve ser a PRIMEIRA coisa no arquivo para evitar warnings
+if os.getenv("PRODUCTION") == "true":
     try:
         from gevent import monkey  # type: ignore
         # Patch tudo, incluindo SSL e threading
