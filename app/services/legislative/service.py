@@ -103,7 +103,7 @@ preciso que os itens do 4 seja criado uma tabela e essa tabela seja o último t�
         Returns:
             True se válido, False caso contrário
         """
-        required_fields = ["contexto_epoca", "resumo_objetivo", "interpretacao_simplificada", "avaliacao_parametrica"]
+        required_fields = ["avaliacao_parametrica"]
 
         # Verifica campos obrigatórios
         for field in required_fields:

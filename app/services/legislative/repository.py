@@ -35,10 +35,6 @@ class LegislativeRepository:
             logger.info(f"Projeto {project_id} já existe no banco (ID: {existing_project.id}) - Atualizando dados")
             projeto = existing_project
             
-            # Atualiza dados do projeto
-            projeto.contexto_epoca = analysis_data.get("contexto_epoca", projeto.contexto_epoca)
-            projeto.resumo_objetivo = analysis_data.get("resumo_objetivo", projeto.resumo_objetivo)
-            projeto.interpretacao_simplificada = analysis_data.get("interpretacao_simplificada", projeto.interpretacao_simplificada)
             projeto.nota_media = self._calculate_average_score(analysis_data.get("avaliacao_parametrica", []))
             
             # Remove avaliações antigas
@@ -105,9 +101,6 @@ class LegislativeRepository:
         """Cria novo projeto."""
         projeto = ProjetoLei(
             codigo_projeto=project_id,
-            contexto_epoca=analysis_data.get("contexto_epoca", ""),
-            resumo_objetivo=analysis_data.get("resumo_objetivo", ""),
-            interpretacao_simplificada=analysis_data.get("interpretacao_simplificada", ""),
             nota_media=self._calculate_average_score(analysis_data.get("avaliacao_parametrica", []))
         )
         
@@ -117,9 +110,6 @@ class LegislativeRepository:
 
     def _update_project(self, projeto: ProjetoLei, analysis_data: Dict[str, Any]) -> None:
         """Atualiza projeto existente."""
-        projeto.contexto_epoca = analysis_data.get("contexto_epoca", projeto.contexto_epoca)
-        projeto.resumo_objetivo = analysis_data.get("resumo_objetivo", projeto.resumo_objetivo)
-        projeto.interpretacao_simplificada = analysis_data.get("interpretacao_simplificada", projeto.interpretacao_simplificada)
         projeto.nota_media = self._calculate_average_score(analysis_data.get("avaliacao_parametrica", []))
         
         # Remove avaliações antigas

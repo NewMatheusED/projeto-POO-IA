@@ -38,9 +38,6 @@ class AnaliseProjetoLei:
     """Modelo para análise completa de um projeto de lei."""
 
     project_id: str
-    contexto_epoca: str
-    resumo_objetivo: str
-    interpretacao_simplificada: str
     nota_media: float
     avaliacoes_parametricas: List[Dict[str, Any]]
     dados_votacao: Optional[Any] = None  # Será DadosVotacao do serviço votes
@@ -54,9 +51,6 @@ class AnaliseProjetoLei:
         """Converte para dicionário."""
         return {
             "project_id": self.project_id,
-            "contexto_epoca": self.contexto_epoca,
-            "resumo_objetivo": self.resumo_objetivo,
-            "interpretacao_simplificada": self.interpretacao_simplificada,
             "avaliacao_parametrica": self.avaliacoes_parametricas,
             "dados_votacao": self.dados_votacao,
             "nota_media": self.nota_media,
@@ -78,9 +72,6 @@ class AnaliseProjetoLei:
 
         return cls(
             project_id=project_id,
-            contexto_epoca=ai_response.get("contexto_epoca", ""),
-            resumo_objetivo=ai_response.get("resumo_objetivo", ""),
-            interpretacao_simplificada=ai_response.get("interpretacao_simplificada", ""),
             nota_media=round(nota_media, 2),
             avaliacoes_parametricas=[av.to_dict() for av in avaliacoes_obj],
         )
@@ -118,9 +109,6 @@ class ProjetoLei(BaseModel):
     __tablename__ = "projetos_lei"
 
     codigo_projeto = Column(String(50), nullable=False, unique=True, index=True)
-    contexto_epoca = Column(Text, nullable=False)
-    resumo_objetivo = Column(Text, nullable=False)
-    interpretacao_simplificada = Column(Text, nullable=False)
     nota_media = Column(Float, nullable=False, index=True)
 
     # Relacionamentos

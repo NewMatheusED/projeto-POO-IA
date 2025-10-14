@@ -90,9 +90,6 @@ class DatabasePersister(DataPersister):
                     "id": projeto.id,
                     "project_id": projeto.codigo_projeto,
                     "analysis_data": {
-                        "contexto_epoca": projeto.contexto_epoca,
-                        "resumo_objetivo": projeto.resumo_objetivo,
-                        "interpretacao_simplificada": projeto.interpretacao_simplificada,
                         "avaliacao_parametrica": [av.to_dict() for av in projeto.avaliacoes]
                     },
                     "dados_votacao": projeto.dados_votacao_db.to_dict() if projeto.dados_votacao_db else None

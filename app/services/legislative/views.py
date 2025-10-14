@@ -137,21 +137,6 @@ def get_prompts():
     ).to_json_response()
 
 
-@legislative_bp.route("/example-response", methods=["GET"])
-def get_example_response():
-    """Endpoint para visualizar exemplo de resposta esperada."""
-    example = {
-        "contexto_epoca": "Em 2017, o Brasil vivia um período de instabilidade política...",
-        "resumo_objetivo": "O PLS 224/2017 propõe a criação de um marco regulatório...",
-        "interpretacao_simplificada": "Na prática, essa lei significa que qualquer pessoa...",
-        "avaliacao_parametrica": [
-            {"criterio": "Impacto_Social", "resumo": "Regulamentação melhora segurança e privacidade...", "nota": 7, "justificativa": "Baseado na análise de redistribuição de recursos..."}
-        ],
-    }
-
-    return success_response({"example": example, "description": "Exemplo de resposta JSON esperada da IA"}).to_json_response()
-
-
 @legislative_bp.route("/save-direct", methods=["POST"])
 def save_direct_analysis():
     """
@@ -163,9 +148,6 @@ def save_direct_analysis():
     {
         "project_id": "PLS 224/2017",
         "analysis_data": {
-            "contexto_epoca": "...",
-            "resumo_objetivo": "...",
-            "interpretacao_simplificada": "...",
             "avaliacao_parametrica": [...]
         },
         "validate_data": true
@@ -174,9 +156,6 @@ def save_direct_analysis():
     2. Formato direto da IA (novo):
     {
         "project_id": "PLS 224/2017",
-        "contexto_epoca": "...",
-        "resumo_objetivo": "...",
-        "interpretacao_simplificada": "...",
         "avaliacao_parametrica": [...],
         "validate_data": true
     }
@@ -197,9 +176,6 @@ def save_direct_analysis():
         else:
             # Formato direto da IA
             analysis_data = {
-                "contexto_epoca": request_data.get("contexto_epoca", ""),
-                "resumo_objetivo": request_data.get("resumo_objetivo", ""),
-                "interpretacao_simplificada": request_data.get("interpretacao_simplificada", ""),
                 "avaliacao_parametrica": request_data.get("avaliacao_parametrica", [])
             }
             validate_data = request_data.get("validate_data", True)
