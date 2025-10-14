@@ -26,7 +26,8 @@ def _build_sqlalchemy_uri() -> str:
     if not (db_host and db_name and db_user):
         return "sqlite:///:memory:"
 
-    return f"mysql+mysqldb://{db_user}:{db_pass}@{db_host}/{db_name}?charset=utf8mb4&connect_timeout=10"
+    # Aumentar timeout e adicionar parâmetros de conexão robustos
+    return f"mysql+mysqldb://{db_user}:{db_pass}@{db_host}/{db_name}?charset=utf8mb4&connect_timeout=30&read_timeout=30&write_timeout=30"
 
 
 class Config:
@@ -35,7 +36,21 @@ class Config:
     REDIS_PASS = os.getenv("REDIS_PASSWORD")
     TOKEN_EXPIRATION = timedelta(minutes=15)
 
-    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True, "pool_recycle": 1800, "pool_timeout": 30, "pool_size": 30, "max_overflow": 15, "pool_use_lifo": True}
+    # Configurações otimizadas para produção com MySQL
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,  # Verifica conexões antes de usar
+        "pool_recycle": 3600,  # Recicla conexões após 1 hora
+        "pool_timeout": 30,  # Timeout para obter conexão do pool
+        "pool_size": 5,  # Reduzido para VPS pequena
+        "max_overflow": 10,  # Conexões extras permitidas
+        "pool_use_lifo": True,  # Usa LIFO para melhor cache
+        "echo": False,  # Desativa logs SQL em produção
+        "connect_args": {
+            "connect_timeout": 30,  # Timeout de conexão inicial
+            "read_timeout": 30,
+            "write_timeout": 30,
+        }
+    }
 
     # URI do banco com fallback seguro para testes
     SQLALCHEMY_DATABASE_URI = _build_sqlalchemy_uri()

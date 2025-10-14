@@ -19,7 +19,7 @@ keepalive = 5
 # Seleção por ambiente
 if is_prod:
     # Produção otimizada para VPS 1 core + 4GB RAM + 1 worker Celery
-    worker_class = "gevent"
+    worker_class = "sync"
     workers = 1  # Apenas 1 worker para não competir com Celery
     threads = 1
     worker_connections = 10
