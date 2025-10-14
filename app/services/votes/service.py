@@ -115,7 +115,7 @@ class SenateTrackerVotesService:
             sigla, numero, ano = self._parse_project_id(project_id)
 
             # Monta URL da API
-            votes_url = urljoin(self.base_url, "/api/v1/votacoes/search")
+            votes_url = urljoin(self.base_url, "/v1/votacoes/search")
 
             # Parâmetros da requisição
             params = {"sigla": sigla, "numero": numero, "ano": ano}

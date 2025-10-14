@@ -172,7 +172,7 @@ def buscar_projetos_emendas() -> List[Dict[str, Any]]:
     """
     try:
         base_url = "https://api.senate-tracker.com.br"
-        url = f"{base_url}/api/v1/processo/emendas/geral"
+        url = f"{base_url}/v1/processo/emendas/geral"
         params = {"filtro": "PEC"}  # Sempre busca PECs
         
         logger.info("Buscando projetos PEC automaticamente...")
@@ -227,7 +227,7 @@ def buscar_dados_projeto(id_processo: str) -> Optional[Dict[str, Any]]:
     """
     try:
         base_url = "https://api.senate-tracker.com.br"
-        url = f"{base_url}/api/v1/processo/{id_processo}"
+        url = f"{base_url}/v1/processo/{id_processo}"
         
         response = requests.get(url, timeout=30)
         
