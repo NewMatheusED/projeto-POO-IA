@@ -1,6 +1,7 @@
 # from datetime import timedelta
 
 from celery import Celery
+
 # from celery.schedules import crontab
 from kombu import Exchange, Queue
 
@@ -13,26 +14,30 @@ rabbitmq_pass = Config.RABBITMQ_PASS
 rabbitmq_vhost = Config.RABBITMQ_VHOST
 
 
-redis_url = Config.REDIS_URL if str(Config.PRODUCTION).lower() == "true" else Config.REDIS_URL_DEV
-
 broker_url = f"pyamqp://{rabbitmq_user}:{rabbitmq_pass}@{rabbitmq_host}:{rabbitmq_port}/{rabbitmq_vhost}"
 
 default_exchange = Exchange("poo_tasks", type="direct")
 
 # Lista única de módulos de tasks (DRY)
 TASK_MODULES = [
-    "app.tasks",
+    "app.tasks.legislative_tasks",
 ]
 
-task_queues = (
-    Queue("ai_queue", default_exchange, routing_key="ai"),
-)
+# Simplifica configuração da fila
+task_queues = (Queue("ia_queue"),)
 
 task_routes = {
+    "app.tasks.legislative_tasks.analyze_project": {"queue": "ia_queue"},
+    "app.tasks.legislative_tasks.automated_analysis": {"queue": "ia_queue"},
 }
 
 # Configuração de tarefas periódicas
 beat_schedule = {
+    'analyze-legislative-projects': {
+        'task': 'app.tasks.legislative_tasks.automated_analysis',
+        'schedule': 3600.0,  # Executa a cada 1 hora (3600 segundos)
+        'args': (50,)  # Processa 50 projetos por execução
+    },
 }
 
 
@@ -41,7 +46,7 @@ def make_celery(app_name=__name__):
     celery = Celery(
         app_name,
         broker=broker_url,
-        backend=redis_url,
+        backend=Config.REDIS_URL,
         include=TASK_MODULES,
     )
 

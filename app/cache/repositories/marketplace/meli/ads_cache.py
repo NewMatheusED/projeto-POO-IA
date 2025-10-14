@@ -74,7 +74,6 @@ class MeliAdsCache(Repository[Dict[str, Any]]):
         """
         try:
             with get_db_session() as db:
-
                 # Verifica se é um MLB (anúncio do Mercado Livre)
                 if ad_id.startswith("MLB"):
                     ad = db.query(meliAds).filter(meliAds.mlb == ad_id).first()
@@ -111,7 +110,6 @@ class MeliAdsCache(Repository[Dict[str, Any]]):
         """
         try:
             with get_db_session() as db:
-
                 # Verifica se é um MLB (anúncio do Mercado Livre)
                 if "mlb" in ad_data and ad_data["mlb"].startswith("MLB"):
                     ad = db.query(meliAds).filter(meliAds.mlb == ad_data["mlb"]).first()

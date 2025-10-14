@@ -1,4 +1,3 @@
-
 from app.flask_config import Config
 
 bind = "0.0.0.0:5000"

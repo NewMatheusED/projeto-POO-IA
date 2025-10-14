@@ -35,16 +35,6 @@ class ErrorCode(Enum):
     EXTERNAL_SERVICE_ERROR = 4002
     TIMEOUT_ERROR = 4003
 
-    # Erros específicos do Mercado Livre (5000-5999)
-    ML_API_ERROR = 5000
-    ML_RATE_LIMIT = 5001
-    ML_INVALID_TOKEN = 5002
-
-    # Erros de pagamento (6000-6999)
-    PAYMENT_ERROR = 6000
-    INSUFFICIENT_FUNDS = 6001
-    PAYMENT_METHOD_INVALID = 6002
-
 
 @dataclass
 class ApiResponse:

@@ -38,7 +38,7 @@ services:
     profiles: ["core"]
     image: ${REGISTRY}/${IMAGE_NAME}:${TAG}
     restart: always
-    command: ["python","worker.py","worker","--loglevel=info","-Q","nightly_queue","--concurrency=1","--max-tasks-per-child=20"]
+    command: ["python","worker.py","worker","--loglevel=info","-Q","ia_queue","--concurrency=1","--max-tasks-per-child=20"]
     env_file:
       - .env
     depends_on:

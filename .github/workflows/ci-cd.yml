@@ -399,6 +399,7 @@ jobs:
             RABBITMQ_USER=${{ secrets.RABBITMQ_USER }}
             RABBITMQ_PASS=${{ secrets.RABBITMQ_PASS }}
             RABBITMQ_VHOST=${{ secrets.RABBITMQ_VHOST }}
+            GITHUB_TOKEN=${{ secrets.IA_TOKEN }}
             EOF
             
             echo "✅ Arquivo .env criado!"

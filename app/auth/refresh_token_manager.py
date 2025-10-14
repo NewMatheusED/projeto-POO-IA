@@ -8,7 +8,6 @@ Implementação otimizada para um único token válido por usuário.
 """
 
 import logging
-from datetime import datetime
 
 from flask_jwt_extended import create_refresh_token
 
@@ -49,11 +48,7 @@ class RefreshTokenManager:
         claims["user_id"] = user_id
 
         # Criar refresh token com tempo de expiração definido na configuração
-        refresh_token = create_refresh_token(
-            identity=user_id, 
-            additional_claims=claims, 
-            expires_delta=Config.JWT_REFRESH_TOKEN_EXPIRES
-        )
+        refresh_token = create_refresh_token(identity=user_id, additional_claims=claims, expires_delta=Config.JWT_REFRESH_TOKEN_EXPIRES)
 
         # Revogar tokens anteriores via blacklist
         try:
@@ -132,11 +127,11 @@ class RefreshTokenManager:
 
         try:
             redis_client = get_redis_client()
-            
+
             # Adicionar à blacklist com TTL padrão
             ttl = int(Config.JWT_REFRESH_TOKEN_EXPIRES.total_seconds())
             redis_client.setex(f"{RefreshTokenManager.BLACKLIST_PREFIX}:{jti}", ttl, "revoked")
-            
+
             logger.info(f"Refresh token {jti} do usuário {user_id} revogado com sucesso")
             return True
 
@@ -161,7 +156,7 @@ class RefreshTokenManager:
 
             # Buscar todas as sessões ativas do usuário
             sessions = get_active_sessions_by_user_id(user_id)
-            
+
             if not sessions:
                 logger.info(f"Nenhuma sessão encontrada para revogar do usuário {user_id}")
                 return True

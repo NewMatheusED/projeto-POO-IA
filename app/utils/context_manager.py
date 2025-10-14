@@ -160,7 +160,7 @@ def get_db_session(max_retries=3, retry_delay=0.5, session_label=None, timeout=1
                         session = None
 
                     backoff_time = retry_delay * (2**attempt)
-                    logger.warning(f"{session_info} Erro 'Too many connections'. " f"Aguardando {backoff_time:.2f}s antes da próxima tentativa. " f"Conexões ativas: {current_connections}")
+                    logger.warning(f"{session_info} Erro 'Too many connections'. Aguardando {backoff_time:.2f}s antes da próxima tentativa. Conexões ativas: {current_connections}")
                     time.sleep(backoff_time)
                     continue
 
@@ -168,7 +168,7 @@ def get_db_session(max_retries=3, retry_delay=0.5, session_label=None, timeout=1
             elif "Lost connection" in error_msg or "server has gone away" in error_msg:
                 if attempt < max_retries - 1:
                     backoff_time = retry_delay * (2**attempt)
-                    logger.warning(f"{session_info} Erro de conexão perdida. Forçando novas conexões. " f"Aguardando {backoff_time:.2f}s antes da próxima tentativa.")
+                    logger.warning(f"{session_info} Erro de conexão perdida. Forçando novas conexões. Aguardando {backoff_time:.2f}s antes da próxima tentativa.")
                     db.engine.dispose()  # Força o pool a criar novas conexões
                     time.sleep(backoff_time)
                     continue
