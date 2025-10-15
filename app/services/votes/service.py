@@ -66,19 +66,20 @@ class SenateTrackerVotesService:
             logger.error(f"Erro ao verificar votos para {project_id}: {str(e)}")
             return False
 
-    def get_project_votes(self, project_id: str) -> Optional[DadosVotacao]:
+    def get_project_votes(self, project_id: str, include_senator_details: bool = True) -> Optional[DadosVotacao]:
         """
         Obtém dados completos de votação de um projeto.
 
         Args:
             project_id: Código do projeto
+            include_senator_details: Se True, busca detalhes dos senadores
 
         Returns:
             DadosVotacao ou None se não encontrado
         """
         try:
             # Verifica cache primeiro
-            cache_key = f"votes_data_{project_id}"
+            cache_key = f"votes_data_{project_id}_{include_senator_details}"
             if self._is_cache_valid(cache_key):
                 cached_data = self._cache[cache_key]["data"]
                 return DadosVotacao(**cached_data) if cached_data else None
@@ -87,6 +88,10 @@ class SenateTrackerVotesService:
             votes_data_dict = self._fetch_project_votes(project_id)
 
             if votes_data_dict and votes_data_dict.get("total_votos", 0) >= self.min_votes_threshold:
+                # Enriquece com dados dos senadores se solicitado
+                if include_senator_details:
+                    votes_data_dict = self._enrich_with_senator_details(votes_data_dict)
+                
                 dados_votacao = DadosVotacao(**votes_data_dict)
                 # Atualiza cache
                 self._update_cache(cache_key, votes_data_dict)
@@ -140,6 +145,55 @@ class SenateTrackerVotesService:
             logger.error(f"Erro ao buscar votos para {project_id}: {str(e)}")
             return self._empty_votes_response()
 
+    def get_senator_details(self, senator_id: str) -> Dict[str, Any]:
+        """
+        Busca dados de um senador específico.
+        
+        Args:
+            senator_id: ID do senador
+            
+        Returns:
+            Dicionário com dados do senador
+        """
+        try:
+            # Verifica cache primeiro
+            cache_key = f"senator_{senator_id}"
+            if self._is_cache_valid(cache_key):
+                return self._cache[cache_key]["data"]
+            
+            senator_url = urljoin(self.base_url, f"/v1/senado/senadores/{senator_id}/detalhe")
+            response = self._make_request_with_retry(senator_url)
+            
+            if response and isinstance(response, dict):
+                senator_data = self._parse_senator_data(response)
+                self._update_cache(cache_key, senator_data)
+                return senator_data
+            else:
+                return self._empty_senator_response()
+        except Exception as e:
+            logger.error(f"Erro ao buscar dados do senador {senator_id}: {str(e)}")
+            return self._empty_senator_response()
+    
+    def _enrich_with_senator_details(self, votes_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Enriquece dados de votação com detalhes dos senadores.
+        
+        Args:
+            votes_data: Dados de votação
+            
+        Returns:
+            Dados de votação enriquecidos
+        """
+        votos_individuais = votes_data.get("votos_individuais", [])
+        
+        for voto in votos_individuais:
+            senator_id = voto.get("CodigoParlamentar", "")
+            if senator_id:
+                senator_data = self.get_senator_details(senator_id)
+                voto["senador_detalhes"] = senator_data
+        
+        return votes_data
+
     def _parse_project_id(self, project_id: str) -> tuple[str, str, str]:
         """
         Parse do project_id para extrair sigla, numero e ano.
@@ -160,13 +214,13 @@ class SenateTrackerVotesService:
         else:
             raise ValueError(f"Formato de project_id inválido: {project_id}")
 
-    def _make_request_with_retry(self, url: str, params: Dict[str, Any], max_retries: int = 3) -> Optional[Dict[str, Any]]:
+    def _make_request_with_retry(self, url: str, params: Optional[Dict[str, Any]] = None, max_retries: int = 3) -> Optional[Dict[str, Any]]:
         """
         Faz requisição HTTP com retry automático.
 
         Args:
             url: URL da requisição
-            params: Parâmetros da requisição
+            params: Parâmetros da requisição (opcional)
             max_retries: Número máximo de tentativas
 
         Returns:
@@ -179,7 +233,7 @@ class SenateTrackerVotesService:
                 if response.status_code == 200:
                     return response.json()
                 elif response.status_code == 404:
-                    logger.info(f"Projeto não encontrado: {params}")
+                    logger.info(f"Recurso não encontrado: {url} - {params}")
                     return None
                 else:
                     logger.warning(f"Status {response.status_code} na tentativa {attempt + 1}")
@@ -242,10 +296,42 @@ class SenateTrackerVotesService:
         except Exception as e:
             logger.error(f"Erro ao fazer parse dos dados de votos: {str(e)}")
             return self._empty_votes_response()
+    
+    def _parse_senator_data(self, senator_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Parse da resposta da API de dados do senador.
+        """
+        try:
+            from datetime import datetime
+            data = senator_data.get("data", {})
+            
+            # Calcula idade
+            data_nascimento = data.get("dataNascimento")
+            idade = None
+            if data_nascimento:
+                nascimento = datetime.strptime(data_nascimento, "%Y-%m-%d")
+                hoje = datetime.now()
+                idade = hoje.year - nascimento.year - ((hoje.month, hoje.day) < (nascimento.month, nascimento.day))
+            
+            return {
+                "nome": data.get("nome", ""),
+                "partido": data.get("partido", ""),
+                "ufPartido": data.get("ufPartido", ""),
+                "ufNaturalidade": data.get("ufNaturalidade", ""),
+                "idade": idade,
+                "sexo": "F" if data.get("sexo") == "Feminino" else "M",
+            }
+        except Exception as e:
+            logger.error(f"Erro ao fazer parse dos dados do senador: {str(e)}")
+            return self._empty_senator_response()
 
     def _empty_votes_response(self) -> Dict[str, Any]:
         """Retorna resposta vazia para projetos sem votos."""
         return {"total_votos": 0, "votos_favoraveis": 0, "votos_contrarios": 0, "votos_abstencoes": 0, "taxa_aprovacao": 0.0, "status_final": "sem_votos", "data_votacao": None, "camara_votacao": None, "votos_individuais": []}
+    
+    def _empty_senator_response(self) -> Dict[str, Any]:
+        """Retorna resposta vazia para senadores sem dados."""
+        return {"nome": "", "partido": "", "ufPartido": "", "ufNaturalidade": "", "idade": None, "sexo": None}
 
     def _is_cache_valid(self, cache_key: str) -> bool:
         """Verifica se o cache é válido."""

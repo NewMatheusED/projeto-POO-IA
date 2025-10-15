@@ -196,8 +196,9 @@ class VotoIndividualDB(BaseModel):
     nome_senador = Column(String(200), nullable=False)
     partido = Column(String(50))
     uf = Column(String(2))
+    idade = Column(Integer)
+    sexo = Column(String(1))
     qualidade_voto = Column(String(10), nullable=False)  # S, N, A, O
-    justificativa = Column(Text)
 
     # Relacionamento
     dados_votacao = relationship("DadosVotacaoDB", back_populates="votos_individuais")
