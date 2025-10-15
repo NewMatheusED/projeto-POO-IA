@@ -33,17 +33,18 @@ class VotesController:
         """
         return self.votes_service.check_project_has_votes(project_id)
 
-    def get_project_votes(self, project_id: str) -> Optional[Dict[str, Any]]:
+    def get_project_votes(self, project_id: str, include_senator_details: bool = True) -> Optional[Dict[str, Any]]:
         """
         Obtém dados completos de votação de um projeto.
 
         Args:
             project_id: Código do projeto
+            include_senator_details: Se True, busca detalhes dos senadores
 
         Returns:
             Dados de votação em formato dicionário ou None
         """
-        votes_data = self.votes_service.get_project_votes(project_id)
+        votes_data = self.votes_service.get_project_votes(project_id, include_senator_details)
         return votes_data.to_dict() if votes_data else None
 
     def batch_check_votes(self, project_ids: List[str]) -> Dict[str, bool]:

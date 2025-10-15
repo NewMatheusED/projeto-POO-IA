@@ -122,9 +122,7 @@ class LegislativeRepository:
             avaliacao = AvaliacaoParametricaDB(
                 projeto_id=projeto_id,
                 criterio=avaliacao_data.get("criterio", ""),
-                resumo=avaliacao_data.get("resumo", ""),
                 nota=avaliacao_data.get("nota", 0),
-                justificativa=avaliacao_data.get("justificativa", "")
             )
             db.session.add(avaliacao)
 
@@ -143,7 +141,13 @@ class LegislativeRepository:
         return round(total_notas / len(notas_validas), 2)
 
     def _save_votes_data(self, projeto_id: int, votes_data: Dict[str, Any]) -> None:
-        """Salva dados de votação."""
+        """
+        Salva dados de votação.
+        
+        Args:
+            projeto_id: ID do projeto
+            votes_data: Dados de votação já processados (incluindo detalhes dos senadores)
+        """
         from app.services.legislative.models import VotoIndividualDB
         
         # Remove dados de votação antigos se existirem
@@ -166,17 +170,26 @@ class LegislativeRepository:
         db.session.add(dados_votacao)
         db.session.flush()  # Para obter o ID dos dados de votação
         
-        # Salva votos individuais
+        # Salva votos individuais com dados dos senadores já incluídos
         votos_individuais = votes_data.get("votos_individuais", [])
         
         for voto_data in votos_individuais:
+            # Extrai dados do senador (já devem estar enriquecidos)
+            senador_detalhes = voto_data.get("senador_detalhes", {})
+            
+            # Determina UF: prioriza ufPartido, depois ufNaturalidade
+            uf_partido = senador_detalhes.get("ufPartido")
+            uf_naturalidade = senador_detalhes.get("ufNaturalidade")
+            uf = uf_partido if uf_partido else (uf_naturalidade if uf_naturalidade else None)
+            
             voto_individual = VotoIndividualDB(
                 dados_votacao_id=dados_votacao.id,
                 nome_senador=voto_data.get("NomeParlamentar", ""),
-                partido=voto_data.get("SiglaPartidoParlamentar", ""),  # Nome correto da chave
-                uf="",  # TODO: Será preenchido posteriormente via endpoint específico
-                qualidade_voto=voto_data.get("QualidadeVoto", ""),
-                justificativa=voto_data.get("JustificativaVoto", "")
+                partido=senador_detalhes.get("partido", ""),
+                uf=uf,
+                idade=senador_detalhes.get("idade"),
+                sexo=senador_detalhes.get("sexo"),
+                qualidade_voto=voto_data.get("QualidadeVoto", "")
             )
             db.session.add(voto_individual)
 

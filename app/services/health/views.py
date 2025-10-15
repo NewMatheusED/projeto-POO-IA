@@ -38,7 +38,7 @@ def start_auto_analysis():
     
     Body esperado:
     {
-        "limit": 3  // opcional: quantos projetos analisar (1-20, padrão: 5)
+        "limit": 3  // opcional: quantos projetos analisar (1-500, padrão: 5)
     }
     """
     try:
@@ -46,10 +46,10 @@ def start_auto_analysis():
         limit = data.get("limit", 5)
         
         # Valida limite
-        if not isinstance(limit, int) or limit < 1 or limit > 20:
+        if not isinstance(limit, int) or limit < 1 or limit > 500:
             return jsonify({
                 "success": False,
-                "error": "Limit deve ser um número entre 1 e 20"
+                "error": "Limit deve ser um número entre 1 e 500"
             }), 400
         
         # Inicia task de análise automática

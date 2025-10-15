@@ -38,7 +38,7 @@ def analyze_project(self, limit: int = 5) -> Dict[str, Any]:
             logger.info(f"🚀 Iniciando análise automática de {limit} projetos")
         
             # 1. Busca projetos no endpoint de emendas
-            projetos = buscar_projetos_emendas()
+            projetos = buscar_projetos_emendas(limit=limit)
             
             if not projetos:
                 logger.warning("Nenhum projeto encontrado")
@@ -163,9 +163,12 @@ def analyze_project(self, limit: int = 5) -> Dict[str, Any]:
             }
 
 
-def buscar_projetos_emendas() -> List[Dict[str, Any]]:
+def buscar_projetos_emendas(limit: int = 10) -> List[Dict[str, Any]]:
     """
     Busca projetos no endpoint de emendas do Senate Tracker.
+    
+    Args:
+        limit: Quantos projetos buscar (padrão: 10)
     
     Returns:
         Lista de projetos encontrados
@@ -173,9 +176,11 @@ def buscar_projetos_emendas() -> List[Dict[str, Any]]:
     try:
         base_url = "https://api.senate-tracker.com.br"
         url = f"{base_url}/v1/processo/emendas/geral"
-        params = {"filtro": "PEC"}  # Sempre busca PECs
+        params = {
+            "filtro": "PLS", 
+        }
         
-        logger.info("Buscando projetos PEC automaticamente...")
+        logger.info(f"Buscando {limit} projetos PLS automaticamente...")
         
         response = requests.get(url, params=params, timeout=30)
         
@@ -192,7 +197,7 @@ def buscar_projetos_emendas() -> List[Dict[str, Any]]:
                         descricao = emenda.get("descricaoDocumentoEmenda", "")
                         
                         # Só inclui se contém PEC
-                        if "PEC" not in identificacao and "PEC" not in descricao:
+                        if "PLS" not in identificacao and "PLS" not in descricao:
                             continue
                         
                         id_processo = emenda["idProcesso"]
@@ -202,7 +207,7 @@ def buscar_projetos_emendas() -> List[Dict[str, Any]]:
                             if project_data:
                                 processos_unicos[id_processo] = project_data
                 projetos = list(processos_unicos.values())
-                logger.info(f"Encontrados {len(projetos)} projetos PEC")
+                logger.info(f"Encontrados {len(projetos)} projetos PLS")
                 return projetos
             else:
                 logger.warning("Estrutura de resposta inválida")

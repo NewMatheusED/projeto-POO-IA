@@ -68,7 +68,7 @@ class LegislativeController:
                 analise = self.legislative_service.parse_ai_response(project_id, ai_response)
 
                 # 4. Enriquece com dados de votos
-                votes_data = self.votes_controller.get_project_votes(project_id)
+                votes_data = self.votes_controller.get_project_votes(project_id, include_senator_details=True)
                 if votes_data:
                     # Atribui dados de votos diretamente (já é um dict)
                     analise.dados_votacao = votes_data
@@ -131,8 +131,8 @@ class LegislativeController:
             # 3. Converte para modelo estruturado (mesmo processo da IA)
             analise = self.legislative_service.parse_ai_response(project_id, analysis_data)
 
-            # 4. Enriquece com dados de votos (mesmo processo da IA)
-            votes_data = self.votes_controller.get_project_votes(project_id)
+            # 4. Enriquece com dados de votos (incluindo detalhes dos senadores para persistência)
+            votes_data = self.votes_controller.get_project_votes(project_id, include_senator_details=True)
             if votes_data:
                 # Atribui dados de votos diretamente (já é um dict)
                 analise.dados_votacao = votes_data
