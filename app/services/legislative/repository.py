@@ -122,9 +122,7 @@ class LegislativeRepository:
             avaliacao = AvaliacaoParametricaDB(
                 projeto_id=projeto_id,
                 criterio=avaliacao_data.get("criterio", ""),
-                resumo=avaliacao_data.get("resumo", ""),
                 nota=avaliacao_data.get("nota", 0),
-                justificativa=avaliacao_data.get("justificativa", "")
             )
             db.session.add(avaliacao)
 
@@ -191,7 +189,7 @@ class LegislativeRepository:
                 uf=uf,
                 idade=senador_detalhes.get("idade"),
                 sexo=senador_detalhes.get("sexo"),
-                qualidade_voto=voto_data.get("QualidadeVoto", ""),
+                qualidade_voto=voto_data.get("QualidadeVoto", "")
             )
             db.session.add(voto_individual)
 

@@ -19,18 +19,16 @@ class AvaliacaoParametrica:
     """Modelo para avaliação paramétrica individual."""
 
     criterio: str
-    resumo: str
     nota: int
-    justificativa: str
 
     def to_dict(self) -> Dict[str, Any]:
         """Converte para dicionário."""
-        return {"criterio": self.criterio, "resumo": self.resumo, "nota": self.nota, "justificativa": self.justificativa}
+        return {"criterio": self.criterio, "nota": self.nota}
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AvaliacaoParametrica":
         """Cria instância a partir de dicionário."""
-        return cls(criterio=data["criterio"], resumo=data["resumo"], nota=data["nota"], justificativa=data["justificativa"])
+        return cls(criterio=data["criterio"], nota=data["nota"])
 
 
 @dataclass
@@ -129,9 +127,7 @@ class AvaliacaoParametricaDB(BaseModel):
 
     projeto_id = Column(Integer, ForeignKey("projetos_lei.id", ondelete="CASCADE"), nullable=False)
     criterio = Column(String(100), nullable=False, index=True)
-    resumo = Column(Text, nullable=False)
     nota = Column(Integer, nullable=False, index=True)
-    justificativa = Column(Text, nullable=False)
 
     # Relacionamentos
     projeto = relationship("ProjetoLei", back_populates="avaliacoes")
@@ -220,7 +216,6 @@ class VotoIndividualDB(BaseModel):
             "partido": self.partido,
             "uf": self.uf,
             "qualidade_voto": self.qualidade_voto,
-            "justificativa": self.justificativa
         }
 
 

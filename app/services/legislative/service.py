@@ -117,7 +117,7 @@ preciso que os itens do 4 seja criado uma tabela e essa tabela seja o último t�
 
         # Verifica estrutura de cada avaliação
         for avaliacao in avaliacoes:
-            required_av_fields = ["criterio", "resumo", "nota", "justificativa"]
+            required_av_fields = ["criterio", "nota"]
             for field in required_av_fields:
                 if field not in avaliacao:
                     return False
