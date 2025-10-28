@@ -17,7 +17,7 @@ class CORSConfig:
     """
 
     # Domínios permitidos por ambiente
-    PRODUCTION_ORIGINS = ["https://senate-tracker.com.br", "https://www.senate-tracker.com.br", "https://api.senate-tracker.com.br"]
+    PRODUCTION_ORIGINS = ["https://senate-tracker.com.br", "https://www.senate-tracker.com.br", "https://api.senate-tracker.com.br", "https://ia.senate-tracker.com.br"]
 
     DEVELOPMENT_ORIGINS = [
         "http://localhost:5173",
