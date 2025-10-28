@@ -202,3 +202,43 @@ class LegislativeRepository:
         db.session.delete(projeto)
         db.session.commit()
         return True
+
+    def get_all_projects_with_evaluations(self) -> List[ProjetoLei]:
+        """
+        Busca todos os projetos com suas avaliações paramétricas.
+        
+        Returns:
+            Lista de projetos com avaliações carregadas
+        """
+        return ProjetoLei.query.options(db.joinedload(ProjetoLei.avaliacoes)).all()
+
+    def get_all_senators_with_votes(self) -> List[Any]:
+        """
+        Busca todos os senadores únicos com seus votos.
+        
+        Returns:
+            Lista de senadores com votos carregados
+        """
+        from app.services.legislative.models import VotoIndividualDB
+        
+        # Busca todos os votos individuais com dados de votação e projeto
+        votos = VotoIndividualDB.query.options(
+            db.joinedload(VotoIndividualDB.dados_votacao).joinedload(DadosVotacaoDB.projeto)
+        ).all()
+        
+        # Agrupa por senador
+        senadores_dict = {}
+        for voto in votos:
+            nome_senador = voto.nome_senador
+            if nome_senador not in senadores_dict:
+                senadores_dict[nome_senador] = {
+                    'nome_senador': voto.nome_senador,
+                    'partido': voto.partido,
+                    'idade': voto.idade,
+                    'uf': voto.uf,
+                    'sexo': voto.sexo,
+                    'votos': []
+                }
+            senadores_dict[nome_senador]['votos'].append(voto)
+        
+        return list(senadores_dict.values())

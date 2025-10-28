@@ -176,30 +176,23 @@ def buscar_projetos_emendas(limit: int = 10) -> List[Dict[str, Any]]:
     try:
         base_url = "https://api.senate-tracker.com.br"
         url = f"{base_url}/v1/processo/emendas/geral"
-        params = {
-            "filtro": "PLS", 
-        }
+        # params = {
+        #     "filtro": "PEC", 
+        # }
         
         logger.info(f"Buscando {limit} projetos PLS automaticamente...")
         
-        response = requests.get(url, params=params, timeout=30)
+        response = requests.get(url, timeout=30)
         
         if response.status_code == 200:
             data = response.json()
 
             if isinstance(data, dict) and "data" in data:
                 emendas = data["data"]
-                # Extrai projetos únicos (remove duplicatas de emendas)
+                # Extrai projetos únicos (remove duplicatas de emendas)MS
                 processos_unicos = {}
                 for emenda in emendas:
                     if isinstance(emenda, dict) and "idProcesso" in emenda:
-                        identificacao = emenda.get("identificacao", "")
-                        descricao = emenda.get("descricaoDocumentoEmenda", "")
-                        
-                        # Só inclui se contém PEC
-                        if "PLS" not in identificacao and "PLS" not in descricao:
-                            continue
-                        
                         id_processo = emenda["idProcesso"]
                         if id_processo not in processos_unicos:
                             # Busca dados do projeto para obter project_id

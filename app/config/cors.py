@@ -20,7 +20,7 @@ class CORSConfig:
     PRODUCTION_ORIGINS = ["https://senate-tracker.com.br", "https://www.senate-tracker.com.br", "https://api.senate-tracker.com.br"]
 
     DEVELOPMENT_ORIGINS = [
-        "http://localhost:3000",
+        "http://localhost:5173",
     ]
 
     # Headers permitidos

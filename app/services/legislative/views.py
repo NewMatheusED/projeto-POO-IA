@@ -197,3 +197,93 @@ def save_direct_analysis():
         return error_response("Dados inválidos", 400, e.messages).to_json_response()
     except Exception as e:
         return error_response("Erro interno do servidor", 500, str(e)).to_json_response()
+
+@legislative_bp.get("/graph_partido_data")
+def get_graph_partido_data():
+    """Endpoint para obter dados para o gráfico de partido."""
+    try:
+        data = legislative_controller.get_graph_partido_data()
+        return success_response(data).to_json_response()
+    except ValidationError as e:
+        return error_response("Dados inválidos", 400, e.messages).to_json_response()
+    except Exception as e:
+        return error_response("Erro interno do servidor", 500, str(e)).to_json_response()
+
+
+@legislative_bp.get("/dados-pec")
+def get_dados_pec():
+    """
+    Endpoint para gerar dados da tabela DADOS PEC.
+    
+    Processa os projetos de lei existentes e gera dados formatados com:
+    - número PAC (código do projeto)
+    - Campos de impacto (números inteiros)
+    - Média (até 2 casas decimais, desconsidera 0)
+    - Qualidade (boa se >= 6, ruim se <= 5)
+    """
+    try:
+        result = legislative_controller.generate_dados_pec()
+        
+        if result["success"]:
+            return success_response({
+                "message": "Dados PEC gerados com sucesso",
+                "total_pecs": result["total_pecs"],
+                "dados_pec": result["dados_pec"]
+            }).to_json_response()
+        else:
+            return error_response("Erro ao gerar dados PEC", 500, result.get("error", "Erro desconhecido")).to_json_response()
+            
+    except Exception as e:
+        return error_response("Erro interno do servidor", 500, str(e)).to_json_response()
+
+
+@legislative_bp.get("/dados-sen")
+def get_dados_sen():
+    """
+    Endpoint para gerar dados da tabela DADOS SEN.
+    
+    Processa os votos individuais dos senadores e calcula impactos baseado nas PECs votadas:
+    - Se votou SIM para PEC ruim: subtrai do impacto
+    - Se votou NÃO para PEC ruim: soma no impacto
+    - Se votou SIM para PEC boa: soma no impacto
+    - Se votou NÃO para PEC boa: subtrai do impacto
+    
+    Retorna dados com:
+    - Informações pessoais do senador (nome, partido, idade, estado, gênero)
+    - Campos de impacto calculados
+    - Média dos impactos (até 2 casas decimais)
+    """
+    try:
+        result = legislative_controller.generate_dados_sen()
+        
+        if result["success"]:
+            return success_response({
+                "message": "Dados SEN gerados com sucesso",
+                "total_senadores": result["total_senadores"],
+                "dados_sen": result["dados_sen"]
+            }).to_json_response()
+        else:
+            return error_response("Erro ao gerar dados SEN", 500, result.get("error", "Erro desconhecido")).to_json_response()
+            
+    except Exception as e:
+        return error_response("Erro interno do servidor", 500, str(e)).to_json_response()
+
+
+@legislative_bp.get("/criterios-avaliacao")
+def get_criterios_avaliacao():
+    """
+    Endpoint para listar todos os critérios de avaliação únicos encontrados na base de dados.
+    
+    Útil para identificar inconsistências de nomenclatura e mapear novos critérios.
+    """
+    try:
+        criterios = legislative_controller.get_unique_criterios()
+        
+        return success_response({
+            "message": "Critérios de avaliação encontrados",
+            "total_criterios": len(criterios),
+            "criterios": criterios
+        }).to_json_response()
+        
+    except Exception as e:
+        return error_response("Erro interno do servidor", 500, str(e)).to_json_response()
