@@ -18,7 +18,7 @@ ia_bp = Blueprint("ia", __name__)
 ai_controller = AIController()
 
 
-@ia_bp.route("/", methods=["GET"])
+@ia_bp.route("", methods=["GET"])
 def health_check():
     """Endpoint para verificar saúde do serviço de IA."""
     return success_response({"message": "Serviço de IA está funcionando", "status": "healthy"}).to_json_response()
