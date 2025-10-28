@@ -44,7 +44,7 @@ class DirectSaveRequestSchema(Schema):
     validate_data = fields.Bool(load_default=True)
 
 
-@legislative_bp.route("/", methods=["GET"])
+@legislative_bp.route("", methods=["GET"])
 def health_check():
     """Endpoint para verificar saúde do serviço de análise legislativa."""
     return success_response(
