@@ -284,15 +284,18 @@ class LegislativeController:
                 # Monta dados da PEC
                 dados_pec.append({
                     "numero_pac": projeto.codigo_projeto,
-                    "impacto_social": impactos["Impacto Social"],
-                    "impacto_economico": impactos["Impacto Econômico"],
-                    "impacto_politico_institucional": impactos["Impacto Político-Institucional"],
-                    "impacto_constitucional": impactos["Impacto Constitucional"],
-                    "impacto_ambiental": impactos["Impacto Ambiental"],
-                    "impacto_regional": impactos["Impacto Regional"],
-                    "impacto_tecnologico": impactos["Impacto Tecnológico"],
-                    "impacto_geopolitico": impactos["Impacto Geopolítico"],
-                    "impacto_temporal": impactos["Impacto Temporal"],
+                    "impacto_social": impactos.get("Impacto Social", 0),
+                    "impacto_economico": impactos.get("Impacto Econômico", 0),
+                    "impacto_politico_institucional": impactos.get("Impacto Político-Institucional", 0),
+                    "impacto_constitucional": impactos.get("Impacto Constitucional", 0),
+                    "impacto_ambiental": impactos.get("Impacto Ambiental", 0),
+                    "impacto_regional": impactos.get("Impacto Regional", 0),
+                    "impacto_tecnologico": impactos.get("Impacto Tecnológico", 0),
+                    "impacto_geopolitico": impactos.get("Impacto Geopolítico", 0),
+                    "educacao": impactos.get("Educacao", 0),
+                    "saude": impactos.get("Saude", 0),
+                    "seguranca": impactos.get("Seguranca", 0),
+                    "saneamento_basico": impactos.get("Saneamento Basico", 0),
                     "media": media,
                     "qualidade": qualidade
                 })
@@ -342,7 +345,7 @@ class LegislativeController:
                 if not senador.get('nome_senador') or not senador.get('votos'):
                     continue
                 
-                # Inicializa campos de impacto
+                # Inicializa campos de impacto (incluindo novos critérios)
                 impactos = {
                     "Impacto Social": 0,
                     "Impacto Econômico": 0,
@@ -352,7 +355,11 @@ class LegislativeController:
                     "Impacto Regional": 0,
                     "Impacto Tecnológico": 0,
                     "Impacto Geopolítico": 0,
-                    "Impacto Temporal": 0
+                    "Impacto Temporal": 0,
+                    "Educacao": 0,
+                    "Saude": 0,
+                    "Seguranca": 0,
+                    "Saneamento Basico": 0
                 }
                 
                 # Processa cada voto do senador
@@ -408,15 +415,18 @@ class LegislativeController:
                     "idade": senador.get('idade'),
                     "estado": senador.get('uf', ''),
                     "genero": senador.get('sexo', ''),
-                    "impacto_social": impactos["Impacto Social"],
-                    "impacto_economico": impactos["Impacto Econômico"],
-                    "impacto_politico_institucional": impactos["Impacto Político-Institucional"],
-                    "impacto_constitucional": impactos["Impacto Constitucional"],
-                    "impacto_ambiental": impactos["Impacto Ambiental"],
-                    "impacto_regional": impactos["Impacto Regional"],
-                    "impacto_tecnologico": impactos["Impacto Tecnológico"],
-                    "impacto_geopolitico": impactos["Impacto Geopolítico"],
-                    "impacto_temporal": impactos["Impacto Temporal"],
+                    "impacto_social": impactos.get("Impacto Social", 0),
+                    "impacto_economico": impactos.get("Impacto Econômico", 0),
+                    "impacto_politico_institucional": impactos.get("Impacto Político-Institucional", 0),
+                    "impacto_constitucional": impactos.get("Impacto Constitucional", 0),
+                    "impacto_ambiental": impactos.get("Impacto Ambiental", 0),
+                    "impacto_regional": impactos.get("Impacto Regional", 0),
+                    "impacto_tecnologico": impactos.get("Impacto Tecnológico", 0),
+                    "impacto_geopolitico": impactos.get("Impacto Geopolítico", 0),
+                    "educacao": impactos.get("Educacao", 0),
+                    "saude": impactos.get("Saude", 0),
+                    "seguranca": impactos.get("Seguranca", 0),
+                    "saneamento_basico": impactos.get("Saneamento Basico", 0),
                     "media": media
                 })
             
@@ -566,16 +576,40 @@ class LegislativeController:
             "impacto_geopolitico_internacional": "Impacto Geopolítico",
             "Impacto_Geopolitico_Internacional": "Impacto Geopolítico",
             
-            # Impacto Temporal - variações
-            "Impacto Temporal": "Impacto Temporal",
-            "Impacto_Temporal": "Impacto Temporal",
-            "impacto_temporal": "Impacto Temporal",
-            "Impacto Temporal/Longo Prazo": "Impacto Temporal",
-            "Impacto Temporal_Longo Prazo": "Impacto Temporal",
-            "Impacto Temporal-Longo Prazo": "Impacto Temporal",
-            "Impacto Temporal/Prazo": "Impacto Temporal",
-            "impacto_temporal_longo_prazo": "Impacto Temporal",
-            "Impacto_Temporal_Longo_Prazo": "Impacto Temporal",
+            # Educacao - variações
+            "Educacao": "Educacao",
+            "educacao": "Educacao",
+            "Educação": "Educacao",
+            "educação": "Educacao",
+            "Educacao/Formacao": "Educacao",
+            "educacao_formacao": "Educacao",
+            
+            # Saude - variações
+            "Saude": "Saude",
+            "saude": "Saude",
+            "Saúde": "Saude",
+            "saúde": "Saude",
+            "Saude Publica": "Saude",
+            "saude_publica": "Saude",
+            "Saude_Publica": "Saude",
+            
+            # Seguranca - variações
+            "Seguranca": "Seguranca",
+            "seguranca": "Seguranca",
+            "Segurança": "Seguranca",
+            "segurança": "Seguranca",
+            "Seguranca Publica": "Seguranca",
+            "seguranca_publica": "Seguranca",
+            "Seguranca_Publica": "Seguranca",
+            
+            # Saneamento Basico - variações
+            "Saneamento Basico": "Saneamento Basico",
+            "Saneamento_Basico": "Saneamento Basico",
+            "saneamento_basico": "Saneamento Basico",
+            "Saneamento Básico": "Saneamento Basico",
+            "saneamento_básico": "Saneamento Basico",
+            "Saneamento": "Saneamento Basico",
+            "saneamento": "Saneamento Basico",
         }
 
     def get_unique_criterios(self) -> List[str]:

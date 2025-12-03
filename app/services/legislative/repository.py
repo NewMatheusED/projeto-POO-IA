@@ -34,16 +34,7 @@ class LegislativeRepository:
         if existing_project:
             logger.info(f"Projeto {project_id} já existe no banco (ID: {existing_project.id}) - Atualizando dados")
             projeto = existing_project
-            
-            projeto.nota_media = self._calculate_average_score(analysis_data.get("avaliacao_parametrica", []))
-            
-            # Remove avaliações antigas
-            for avaliacao in projeto.avaliacoes:
-                db.session.delete(avaliacao)
-            
-            # Remove dados de votação antigos
-            if projeto.dados_votacao_db:
-                db.session.delete(projeto.dados_votacao_db)
+            self._update_project(projeto, analysis_data)
         else:
             # Cria novo projeto
             projeto = self._create_project(project_id, analysis_data)
@@ -99,9 +90,19 @@ class LegislativeRepository:
 
     def _create_project(self, project_id: str, analysis_data: Dict[str, Any]) -> ProjetoLei:
         """Cria novo projeto."""
+        # Usa nota_media da análise se disponível, senão calcula
+        nota_media = analysis_data.get("nota_media")
+        if nota_media is None:
+            nota_media = self._calculate_average_score(analysis_data.get("avaliacao_parametrica", []))
+        
         projeto = ProjetoLei(
             codigo_projeto=project_id,
-            nota_media=self._calculate_average_score(analysis_data.get("avaliacao_parametrica", []))
+            nota_media=float(nota_media),
+            contexto_da_epoca=analysis_data.get("contexto_da_epoca"),
+            resumo_objetivo=analysis_data.get("resumo_objetivo"),
+            interpretacao_simplificada=analysis_data.get("interpretacao_simplificada"),
+            tabela_markdown=analysis_data.get("tabela_markdown"),
+            observacoes_metodologicas=analysis_data.get("observacoes_metodologicas")
         )
         
         db.session.add(projeto)
@@ -110,11 +111,26 @@ class LegislativeRepository:
 
     def _update_project(self, projeto: ProjetoLei, analysis_data: Dict[str, Any]) -> None:
         """Atualiza projeto existente."""
-        projeto.nota_media = self._calculate_average_score(analysis_data.get("avaliacao_parametrica", []))
+        # Atualiza nota_media
+        nota_media = analysis_data.get("nota_media")
+        if nota_media is None:
+            nota_media = self._calculate_average_score(analysis_data.get("avaliacao_parametrica", []))
+        projeto.nota_media = float(nota_media)
+        
+        # Atualiza novos campos
+        projeto.contexto_da_epoca = analysis_data.get("contexto_da_epoca")
+        projeto.resumo_objetivo = analysis_data.get("resumo_objetivo")
+        projeto.interpretacao_simplificada = analysis_data.get("interpretacao_simplificada")
+        projeto.tabela_markdown = analysis_data.get("tabela_markdown")
+        projeto.observacoes_metodologicas = analysis_data.get("observacoes_metodologicas")
         
         # Remove avaliações antigas
         for avaliacao in projeto.avaliacoes:
             db.session.delete(avaliacao)
+        
+        # Remove dados de votação antigos
+        if projeto.dados_votacao_db:
+            db.session.delete(projeto.dados_votacao_db)
 
     def _save_parametric_evaluations(self, projeto_id: int, avaliacoes: List[Dict[str, Any]]) -> None:
         """Salva avaliações paramétricas."""
@@ -123,6 +139,9 @@ class LegislativeRepository:
                 projeto_id=projeto_id,
                 criterio=avaliacao_data.get("criterio", ""),
                 nota=avaliacao_data.get("nota", 0),
+                resumo_interpretacao=avaliacao_data.get("resumo_interpretacao"),
+                justificativa=avaliacao_data.get("justificativa"),
+                efeitos_observados=avaliacao_data.get("efeitos_observados")
             )
             db.session.add(avaliacao)
 

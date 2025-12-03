@@ -207,5 +207,3 @@ python run.py
 - Adicionar testes de integração para endpoints IA e Processing
 - Habilitar CSRF para cookies se houver necessidade de uso cross-site controlado
 - Observabilidade (logs estruturados/Tracing) e métricas de uso de tokens IA
-
-
