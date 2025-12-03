@@ -7,7 +7,7 @@ Define estruturas de dados e modelos de banco para análise legislativa.
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import Column, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Column, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, JSON
 from sqlalchemy.orm import relationship
 
 from app.models.base.models_base import BaseModel
@@ -20,15 +20,34 @@ class AvaliacaoParametrica:
 
     criterio: str
     nota: int
+    resumo_interpretacao: Optional[str] = None
+    justificativa: Optional[str] = None
+    efeitos_observados: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Converte para dicionário."""
-        return {"criterio": self.criterio, "nota": self.nota}
+        result = {
+            "criterio": self.criterio,
+            "nota": self.nota
+        }
+        if self.resumo_interpretacao is not None:
+            result["resumo_interpretacao"] = self.resumo_interpretacao
+        if self.justificativa is not None:
+            result["justificativa"] = self.justificativa
+        if self.efeitos_observados is not None:
+            result["efeitos_observados"] = self.efeitos_observados
+        return result
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AvaliacaoParametrica":
         """Cria instância a partir de dicionário."""
-        return cls(criterio=data["criterio"], nota=data["nota"])
+        return cls(
+            criterio=data["criterio"],
+            nota=data["nota"],
+            resumo_interpretacao=data.get("resumo_interpretacao"),
+            justificativa=data.get("justificativa"),
+            efeitos_observados=data.get("efeitos_observados")
+        )
 
 
 @dataclass
@@ -39,6 +58,13 @@ class AnaliseProjetoLei:
     nota_media: float
     avaliacoes_parametricas: List[Dict[str, Any]]
     dados_votacao: Optional[Any] = None  # Será DadosVotacao do serviço votes
+    
+    # Novos campos da análise
+    contexto_da_epoca: Optional[str] = None
+    resumo_objetivo: Optional[str] = None
+    interpretacao_simplificada: Optional[str] = None
+    tabela_markdown: Optional[str] = None
+    observacoes_metodologicas: Optional[Dict[str, Any]] = None
 
     # Metadados
     data_analise: Optional[str] = None
@@ -47,7 +73,7 @@ class AnaliseProjetoLei:
 
     def to_dict(self) -> Dict[str, Any]:
         """Converte para dicionário."""
-        return {
+        result = {
             "project_id": self.project_id,
             "avaliacao_parametrica": self.avaliacoes_parametricas,
             "dados_votacao": self.dados_votacao,
@@ -56,22 +82,45 @@ class AnaliseProjetoLei:
             "modelo_ia": self.modelo_ia,
             "tokens_utilizados": self.tokens_utilizados,
         }
+        if self.contexto_da_epoca is not None:
+            result["contexto_da_epoca"] = self.contexto_da_epoca
+        if self.resumo_objetivo is not None:
+            result["resumo_objetivo"] = self.resumo_objetivo
+        if self.interpretacao_simplificada is not None:
+            result["interpretacao_simplificada"] = self.interpretacao_simplificada
+        if self.tabela_markdown is not None:
+            result["tabela_markdown"] = self.tabela_markdown
+        if self.observacoes_metodologicas is not None:
+            result["observacoes_metodologicas"] = self.observacoes_metodologicas
+        return result
 
     @classmethod
     def from_ai_response(cls, project_id: str, ai_response: Dict[str, Any]) -> "AnaliseProjetoLei":
         """Cria instância a partir da resposta da IA."""
-        # Calcula nota média (desconsiderando notas 0 - nulo)
-        avaliacoes = ai_response.get("avaliacao_parametrica", [])
-        notas_validas = [av.get("nota", 0) for av in avaliacoes if av.get("nota", 0) > 0]
-        nota_media = sum(notas_validas) / len(notas_validas) if notas_validas else 0
-
+        # Usa nota_media da resposta se disponível, senão calcula
+        nota_media = ai_response.get("nota_media")
+        if nota_media is None:
+            # Calcula nota média (desconsiderando notas 0 - nulo)
+            avaliacoes = ai_response.get("avaliacao_parametrica", [])
+            notas_validas = [av.get("nota", 0) for av in avaliacoes if av.get("nota", 0) > 0]
+            nota_media = sum(notas_validas) / len(notas_validas) if notas_validas else 0
+        else:
+            # Garante que é float e arredonda
+            nota_media = float(nota_media)
+        
         # Converte avaliações
+        avaliacoes = ai_response.get("avaliacao_parametrica", [])
         avaliacoes_obj = [AvaliacaoParametrica.from_dict(av) for av in avaliacoes]
 
         return cls(
             project_id=project_id,
             nota_media=round(nota_media, 2),
             avaliacoes_parametricas=[av.to_dict() for av in avaliacoes_obj],
+            contexto_da_epoca=ai_response.get("contexto_da_epoca"),
+            resumo_objetivo=ai_response.get("resumo_objetivo"),
+            interpretacao_simplificada=ai_response.get("interpretacao_simplificada"),
+            tabela_markdown=ai_response.get("tabela_markdown"),
+            observacoes_metodologicas=ai_response.get("observacoes_metodologicas"),
         )
 
 
@@ -108,6 +157,13 @@ class ProjetoLei(BaseModel):
 
     codigo_projeto = Column(String(50), nullable=False, unique=True, index=True)
     nota_media = Column(Float, nullable=False, index=True)
+    
+    # Novos campos da análise
+    contexto_da_epoca = Column(Text, nullable=True)
+    resumo_objetivo = Column(Text, nullable=True)
+    interpretacao_simplificada = Column(Text, nullable=True)
+    tabela_markdown = Column(Text, nullable=True)
+    observacoes_metodologicas = Column(JSON, nullable=True)
 
     # Relacionamentos
     avaliacoes = relationship("AvaliacaoParametricaDB", back_populates="projeto", cascade="all, delete-orphan")
@@ -128,6 +184,11 @@ class AvaliacaoParametricaDB(BaseModel):
     projeto_id = Column(Integer, ForeignKey("projetos_lei.id", ondelete="CASCADE"), nullable=False)
     criterio = Column(String(100), nullable=False, index=True)
     nota = Column(Integer, nullable=False, index=True)
+    
+    # Novos campos da avaliação paramétrica
+    resumo_interpretacao = Column(Text, nullable=True)
+    justificativa = Column(Text, nullable=True)
+    efeitos_observados = Column(Text, nullable=True)
 
     # Relacionamentos
     projeto = relationship("ProjetoLei", back_populates="avaliacoes")
